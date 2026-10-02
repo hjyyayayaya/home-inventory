@@ -6,10 +6,10 @@
 <meta name="theme-color" content="#19c8b9">
 <link rel="manifest" href="manifest.json">
 <title>物品收纳管家 · 家庭库存与保质期管理</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Noto+Sans+SC:wght@400;500;700&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -30,6 +30,7 @@
       </div>
     </div>
     <div class="header-actions">
+      <button id="btn-cats" class="btn" title="管理类目（添加美妆、宠物、小猫……）">🏷 类目</button>
       <button id="btn-export-json" class="btn" title="导出 JSON 备份文件">导出备份</button>
       <button id="btn-share" class="btn" hidden title="调出系统分享，把备份存到任意位置（手机端可用）">分享备份</button>
       <button id="btn-export-csv" class="btn" title="导出 CSV 表格（可用 Excel 打开）">导出CSV</button>
@@ -87,6 +88,7 @@
       </div>
 
       <div class="panel">
+        <span class="panel-sticker ps-alert">🐱</span>
         <div class="panel-head">
           <h2>⏰ 保质期提醒</h2>
           <label class="inline-setting">提前
@@ -99,10 +101,12 @@
 
       <div class="panel-row">
         <div class="panel">
+          <span class="panel-sticker ps-cat-fruit">🍓</span>
           <h2>📊 分类统计</h2>
           <div id="chart-category"></div>
         </div>
         <div class="panel">
+          <span class="panel-sticker ps-paw">🐾</span>
           <h2>📍 位置分布</h2>
           <div id="chart-location"></div>
         </div>
@@ -152,10 +156,9 @@
         <label class="field span2"><span>名称 *</span>
           <input name="name" required maxlength="50" placeholder="如：纯牛奶 250ml">
         </label>
-        <label class="field"><span>分类</span>
-          <input name="category" list="dl-category" maxlength="20" placeholder="食品 / 药品 / 日用品…">
-          <datalist id="dl-category"></datalist>
-        </label>
+        <div class="field span2"><span>类目（点选，也可以自己新建）</span>
+          <div id="cat-select" class="cat-select"></div>
+        </div>
         <label class="field"><span>存放位置</span>
           <input name="location" list="dl-location" maxlength="20" placeholder="冰箱 / 厨房柜 / 储物间…">
           <datalist id="dl-location"></datalist>
@@ -184,6 +187,27 @@
         <button type="submit" class="btn primary">保存</button>
       </div>
     </form>
+  </div>
+</div>
+
+<div id="cat-overlay" class="modal-overlay hidden">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cat-title">
+    <div class="modal-head">
+      <h2 id="cat-title">🏷 类目管理</h2>
+      <button type="button" id="cat-close" class="icon-btn" title="关闭">✕</button>
+    </div>
+    <p class="cat-tip">点上排表情选图标 → 起个名字 → 添加类目。<br>点下面的类目徽章可以改图标、改名或删除。</p>
+    <div id="cat-emoji-picker" class="emoji-picker"></div>
+    <div class="cat-add-row">
+      <input id="cat-new-name" class="cat-name-input" maxlength="20" placeholder="类目名称，如：美妆 / 宠物 / 小猫">
+      <button type="button" id="cat-add-btn" class="btn primary">添加类目</button>
+      <button type="button" id="cat-del-btn" class="btn danger-btn hidden">删除</button>
+      <button type="button" id="cat-cancel-edit" class="btn hidden">取消编辑</button>
+    </div>
+    <div id="cat-list" class="cat-list"></div>
+    <div class="modal-foot">
+      <button type="button" id="cat-done" class="btn primary">完成</button>
+    </div>
   </div>
 </div>
 
