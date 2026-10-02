@@ -9,26 +9,24 @@ const LS_ITEMS = 'homeInventory.items.v1';
 const LS_SETTINGS = 'homeInventory.settings.v1';
 const LS_CATEGORIES = 'homeInventory.categories.v1';
 
-// 默认类目（可随时在「类目管理」里增删改）
+// 预设类目（icon = 自绘 SVG 图标 id；presets = 该类目下的常用物品预设）
 const DEFAULT_CATEGORIES = [
-  { name: '食品', emoji: '🍓' },
-  { name: '药品', emoji: '💊' },
-  { name: '日用品', emoji: '🧴' },
-  { name: '美妆', emoji: '💄' },
-  { name: '宠物', emoji: '🐾' },
-  { name: '小猫', emoji: '🐱' },
-  { name: '数码', emoji: '🎧' },
-  { name: '衣物', emoji: '👗' },
-  { name: '其他', emoji: '📦' },
+  { name: '食品', icon: 'food' },
+  { name: '药品', icon: 'med' },
+  { name: '日用品', icon: 'bottle' },
+  { name: '美妆', icon: 'lipstick', presets: [['面霜', 'cream'], ['香水', 'perfume'], ['面膜', 'mask'], ['口红', 'lipstick'], ['眼影', 'eyeshadow'], ['化妆镜', 'mirror'], ['梳子', 'comb'], ['乳液', 'lotion']] },
+  { name: '宠物', icon: 'paw', presets: [['项圈', 'collar'], ['猫砂', 'litter'], ['逗猫棒', 'wand'], ['狗盆', 'bowl'], ['宠物窝', 'petnest'], ['宠物药', 'petmed'], ['狗', 'dogface'], ['猫', 'catface']] },
+  { name: '小猫', icon: 'catface' },
+  { name: '数码', icon: 'headphones' },
+  { name: '衣物', icon: 'tee' },
+  { name: '其他', icon: 'box' },
 ];
 
-// 类目图标选择器里的候选表情
-const EMOJI_CHOICES = [
-  '🍓', '🍔', '🍰', '🍎', '🥛', '🍚', '🍜', '☕️', '🍫', '💊',
-  '🩹', '🧴', '🧻', '🧹', '🛁', '🧼', '💄', '🪥', '🧦', '👗',
-  '👠', '👜', '🐱', '🐶', '🐾', '🐠', '🐦', '🧸', '🎧', '📱',
-  '💻', '⌚️', '📚', '✏️', '🎨', '🎁', '🔧', '🪴', '⚽️', '🚗',
-  '🏷', '📦',
+// 类目管理器里的候选图标（自绘 SVG）
+const ICON_CHOICES = [
+  'food', 'med', 'bottle', 'lipstick', 'cream', 'perfume', 'mask', 'eyeshadow',
+  'mirror', 'comb', 'lotion', 'paw', 'catface', 'dogface', 'collar', 'litter',
+  'wand', 'bowl', 'petmed', 'petnest', 'headphones', 'tee', 'box',
 ];
 
 const state = {
@@ -38,6 +36,7 @@ const state = {
   filters: { q: '', status: 'all', category: 'all', location: 'all', sort: 'expiry' },
   editingId: null, // 正在编辑的物品 id；null 表示新增
   formCategory: '', // 弹窗表单当前选中的类目
+  formIcon: '', // 弹窗表单当前选中的物品图标
 };
 
 /* ---------------- 工具函数 ---------------- */
@@ -139,13 +138,26 @@ function load() {
     const arr = JSON.parse(localStorage.getItem(LS_CATEGORIES));
     state.categories = Array.isArray(arr) && arr.length
       ? arr.filter((c) => c && typeof c.name === 'string' && c.name.trim())
-          .map((c) => ({ name: c.name.trim().slice(0, 20), emoji: String(c.emoji || '🏷').slice(0, 4) }))
+          .map((c) => ({
+            name: c.name.trim().slice(0, 20),
+            icon: String(c.icon || c.emoji || '🏷').slice(0, 24),
+            ...(Array.isArray(c.presets) ? { presets: c.presets } : {}),
+          }))
       : [];
   } catch { state.categories = []; }
-  if (!state.categories.length) state.categories = DEFAULT_CATEGORIES.map((c) => ({ ...c }));
+  // 保证预设类目存在（老数据自动升级为手绘图标；用户自建的类目不动）
+  for (const preset of DEFAULT_CATEGORIES) {
+    const existing = state.categories.find((c) => c.name === preset.name);
+    if (existing) {
+      existing.icon = preset.icon;
+      if (preset.presets) existing.presets = preset.presets;
+    } else {
+      state.categories.push({ name: preset.name, icon: preset.icon, ...(preset.presets ? { presets: preset.presets } : {}) });
+    }
+  }
   for (const it of state.items) {
     if (it.category && !state.categories.some((c) => c.name === it.category)) {
-      state.categories.push({ name: it.category, emoji: '🏷' });
+      state.categories.push({ name: it.category, icon: '🏷' });
     }
   }
 }
@@ -158,9 +170,18 @@ function saveCategories() {
   localStorage.setItem(LS_CATEGORIES, JSON.stringify(state.categories));
 }
 
-function categoryEmoji(name) {
+function catIcon(name) {
   const c = state.categories.find((x) => x.name === name);
-  return c ? c.emoji : '🏷';
+  return c ? (c.icon || '🏷') : '🏷';
+}
+
+/** icon 传入 svg 图标名（如 'lipstick'）或 emoji 字符，返回对应 HTML */
+function iconHtml(id, cls) {
+  if (!id) return '';
+  if (/^[a-z][a-z0-9-]*$/.test(id)) {
+    return `<svg class="ic ${cls || ''}" aria-hidden="true"><use href="#ic-${id}"/></svg>`;
+  }
+  return `<span class="em ${cls || ''}">${escapeHtml(id)}</span>`;
 }
 
 function saveSettings() {
@@ -237,7 +258,7 @@ function renderBarChart(el, entries) {
   const max = Math.max(...entries.map((e) => e.count));
   el.innerHTML = entries.map((e) => `
     <div class="bar-row">
-      <span class="bar-label" title="${escapeHtml(e.name)}">${escapeHtml(e.name)}</span>
+      <span class="bar-label" title="${escapeHtml(e.name)}">${e.icon ? iconHtml(e.icon) : ''}${escapeHtml(e.name)}</span>
       <div class="bar-track"><div class="bar-fill" style="width:${Math.max(8, Math.round(e.count / max * 100))}%"></div></div>
       <span class="bar-val">${e.count}</span>
     </div>`).join('');
@@ -245,7 +266,7 @@ function renderBarChart(el, entries) {
 
 function renderCharts() {
   const catEntries = tally((it) => it.category.trim(), '未分类')
-    .map((e) => ({ name: `${categoryEmoji(e.name)} ${e.name}`, count: e.count }));
+    .map((e) => ({ name: e.name, count: e.count, icon: catIcon(e.name) }));
   renderBarChart($('#chart-category'), catEntries);
   renderBarChart($('#chart-location'), tally((it) => it.location.trim(), '未设置位置'));
 }
@@ -308,13 +329,14 @@ function itemCardHtml(it) {
   const info = expiryInfo(it);
   const low = isLowStock(it);
   const meta = [];
-  if (it.category) meta.push(`<span class="chip">${categoryEmoji(it.category)} ${escapeHtml(it.category)}</span>`);
+  if (it.category) meta.push(`<span class="chip">${iconHtml(catIcon(it.category))} ${escapeHtml(it.category)}</span>`);
   if (it.location) meta.push(`<span class="chip">📍 ${escapeHtml(it.location)}</span>`);
   if (it.expiryDate) meta.push(`<span class="chip">⏳ 保质期至 ${escapeHtml(it.expiryDate)}</span>`);
   if (it.purchaseDate) meta.push(`<span class="chip">🛒 购于 ${escapeHtml(it.purchaseDate)}</span>`);
   return `<div class="item-card">
     <div class="item-main">
       <div class="item-name-row">
+        ${iconHtml(it.icon || catIcon(it.category), 'item-ic')}
         <span class="item-name">${escapeHtml(it.name)}</span>
         <span class="badge ${info.code}">${info.label}</span>
         ${low ? '<span class="badge low">库存不足</span>' : ''}
@@ -380,6 +402,7 @@ function openModal(item) {
   const form = $('#item-form');
   state.editingId = item ? item.id : null;
   state.formCategory = item ? item.category : '';
+  state.formIcon = item ? (item.icon || catIcon(item.category)) : '';
   $('#modal-title').textContent = item ? '编辑物品' : '添加物品';
   form.reset();
   if (item) {
@@ -393,6 +416,7 @@ function openModal(item) {
     form.elements['note'].value = item.note;
   }
   renderCatSelect();
+  renderPresets();
   $('#modal-overlay').classList.remove('hidden');
   setTimeout(() => form.elements['name'].focus(), 60);
 }
@@ -408,6 +432,7 @@ function submitForm(e) {
   const data = {
     name: String(fd.get('name') || '').trim(),
     category: (state.formCategory || '').trim(),
+    icon: state.formIcon || catIcon(state.formCategory),
     location: String(fd.get('location') || '').trim(),
     quantity: Math.max(0, parseFloat(fd.get('quantity')) || 0),
     unit: String(fd.get('unit') || '').trim() || '个',
@@ -433,7 +458,7 @@ function submitForm(e) {
 
 /* ---------------- 类目管理 ---------------- */
 
-let catEmojiPick = '🏷';
+let catIconPick = 'box';
 let catEditing = null; // 正在编辑的原始类目名；null 表示新建模式
 
 function openCatManager() {
@@ -450,19 +475,19 @@ function closeCatManager() {
 }
 
 function renderCatPicker() {
-  $('#cat-emoji-picker').innerHTML = EMOJI_CHOICES.map((e) =>
-    `<button type="button" class="emoji-pick${e === catEmojiPick ? ' picked' : ''}" data-emoji="${e}">${e}</button>`).join('');
+  $('#cat-emoji-picker').innerHTML = ICON_CHOICES.map((id) =>
+    `<button type="button" class="emoji-pick${id === catIconPick ? ' picked' : ''}" data-icon="${id}" title="${id}"><svg class="ic"><use href="#ic-${id}"/></svg></button>`).join('');
 }
 
 function renderCatList() {
   $('#cat-list').innerHTML = state.categories.map((c) =>
-    `<button type="button" class="cat-chip${c.name === catEditing ? ' selected' : ''}" data-name="${escapeHtml(c.name)}">${c.emoji} ${escapeHtml(c.name)}</button>`).join('')
+    `<button type="button" class="cat-chip${c.name === catEditing ? ' selected' : ''}" data-name="${escapeHtml(c.name)}">${iconHtml(c.icon)} ${escapeHtml(c.name)}</button>`).join('')
     || '<div class="chart-empty">还没有类目，先添加一个吧</div>';
 }
 
 function resetCatForm() {
   catEditing = null;
-  catEmojiPick = '🏷';
+  catIconPick = 'box';
   $('#cat-new-name').value = '';
   $('#cat-add-btn').textContent = '添加类目';
   $('#cat-del-btn').classList.add('hidden');
@@ -473,7 +498,7 @@ function resetCatForm() {
 function startEditCategory(name) {
   catEditing = name;
   const c = state.categories.find((x) => x.name === name);
-  catEmojiPick = c ? c.emoji : '🏷';
+  catIconPick = c ? (c.icon || 'box') : 'box';
   $('#cat-new-name').value = name;
   $('#cat-add-btn').textContent = '保存修改';
   $('#cat-del-btn').classList.remove('hidden');
@@ -493,7 +518,7 @@ function saveCategory() {
     const cat = state.categories.find((c) => c.name === catEditing);
     const oldName = cat.name;
     cat.name = name;
-    cat.emoji = catEmojiPick;
+    cat.icon = catIconPick;
     if (oldName !== name) {
       // 改名同步到所有物品和筛选状态
       for (const it of state.items) if (it.category === oldName) it.category = name;
@@ -506,9 +531,9 @@ function saveCategory() {
     catEditing = name;
     $('#cat-add-btn').textContent = '保存修改';
   } else {
-    state.categories.push({ name, emoji: catEmojiPick });
+    state.categories.push({ name, icon: catIconPick });
     saveCategories();
-    toast(`已添加类目 ${catEmojiPick} ${name}`);
+    toast(`已添加类目「${name}」`);
     catEditing = name;
     $('#cat-add-btn').textContent = '保存修改';
     $('#cat-del-btn').classList.remove('hidden');
@@ -548,8 +573,25 @@ function renderCatSelect() {
   const el = $('#cat-select');
   if (!el) return;
   el.innerHTML = state.categories.map((c) =>
-    `<button type="button" class="cat-chip${c.name === state.formCategory ? ' selected' : ''}" data-name="${escapeHtml(c.name)}">${c.emoji} ${escapeHtml(c.name)}</button>`).join('')
+    `<button type="button" class="cat-chip${c.name === state.formCategory ? ' selected' : ''}" data-name="${escapeHtml(c.name)}">${iconHtml(c.icon)} ${escapeHtml(c.name)}</button>`).join('')
     + '<button type="button" class="cat-chip cat-add-mini" id="cat-add-mini" title="新建类目">＋ 新建</button>';
+}
+
+/** 选中类目后，展示该类目下的常用物品预设（点一下自动填名称和图标） */
+function renderPresets() {
+  const wrap = $('#preset-chips');
+  const list = $('#preset-chip-list');
+  if (!wrap || !list) return;
+  const cat = state.categories.find((c) => c.name === state.formCategory);
+  const presets = cat && Array.isArray(cat.presets) ? cat.presets : [];
+  if (!presets.length) {
+    wrap.classList.add('hidden');
+    list.innerHTML = '';
+    return;
+  }
+  wrap.classList.remove('hidden');
+  list.innerHTML = presets.map(([n, i]) =>
+    `<button type="button" class="preset-chip${state.formIcon === i ? ' selected' : ''}" data-name="${escapeHtml(n)}" data-icon="${i}">${iconHtml(i)} ${escapeHtml(n)}</button>`).join('');
 }
 
 /* ---------------- 导出 / 导入 ---------------- */
@@ -829,9 +871,9 @@ function bindEvents() {
   $('#cat-done').addEventListener('click', closeCatManager);
   $('#cat-overlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeCatManager(); });
   $('#cat-emoji-picker').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-emoji]');
+    const b = e.target.closest('[data-icon]');
     if (!b) return;
-    catEmojiPick = b.dataset.emoji;
+    catIconPick = b.dataset.icon;
     renderCatPicker();
   });
   $('#cat-add-btn').addEventListener('click', saveCategory);
@@ -847,10 +889,21 @@ function bindEvents() {
     const b = e.target.closest('[data-name]');
     if (b) {
       state.formCategory = b.dataset.name;
+      state.formIcon = catIcon(state.formCategory);
       renderCatSelect();
+      renderPresets();
       return;
     }
     if (e.target.closest('#cat-add-mini')) openCatManager();
+  });
+
+  // 类目下的常用物品预设：点一下自动填名称和图标
+  $('#preset-chip-list').addEventListener('click', (e) => {
+    const b = e.target.closest('.preset-chip');
+    if (!b) return;
+    $('#item-form').elements['name'].value = b.dataset.name;
+    state.formIcon = b.dataset.icon;
+    renderPresets();
   });
 
   // 导出 / 分享 / 导入
