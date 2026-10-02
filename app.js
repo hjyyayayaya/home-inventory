@@ -443,6 +443,58 @@ function setupShareButton() {
   } catch { /* 该环境不支持分享，保持隐藏 */ }
 }
 
+/* ---------------- 安装提示条 ---------------- */
+
+const HINT_DISMISSED_KEY = 'homeInventory.installHintDismissed.v1';
+let deferredInstall = null;
+
+function setupInstallHint() {
+  const el = $('#install-hint');
+  if (!el) return;
+  try {
+    if (localStorage.getItem(HINT_DISMISSED_KEY) === '1') return;
+  } catch { /* 忽略 */ }
+  // 已经安装为独立应用（standalone 模式）就不再提示
+  if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return;
+
+  const textEl = $('#install-hint-text');
+  const btn = $('#install-btn');
+
+  // Chrome / Edge 等：捕获安装事件，可直接一键安装
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstall = e;
+    textEl.textContent = '把「物品收纳管家」安装到本设备，之后可离线使用';
+    btn.classList.remove('hidden');
+    el.classList.remove('hidden');
+  });
+
+  btn.addEventListener('click', async () => {
+    if (!deferredInstall) return;
+    deferredInstall.prompt();
+    const choice = await deferredInstall.userChoice;
+    if (choice && choice.outcome === 'accepted') {
+      el.classList.add('hidden');
+      toast('安装成功后桌面会出现应用图标');
+    }
+    deferredInstall = null;
+  });
+
+  // 其他浏览器（vivo/小米等自带浏览器）：提示换 Chrome / Edge 安装
+  setTimeout(() => {
+    if (deferredInstall || dismissed) return;
+    textEl.textContent = '当前浏览器不支持一键安装。用 Chrome 或 Edge 打开本页，菜单里点「添加到主屏幕 / 安装应用」，即可像 App 一样离线使用';
+    el.classList.remove('hidden');
+  }, 1500);
+
+  let dismissed = false;
+  $('#install-hint-close').addEventListener('click', () => {
+    dismissed = true;
+    el.classList.add('hidden');
+    try { localStorage.setItem(HINT_DISMISSED_KEY, '1'); } catch { /* 忽略 */ }
+  });
+}
+
 function csvCell(v) {
   const s = String(v ?? '');
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -618,6 +670,7 @@ function init() {
     navigator.storage.persist().catch(() => {});
   }
   setupShareButton();
+  setupInstallHint();
   $('#warn-days').value = state.settings.warnDays;
   bindEvents();
   renderAll();
