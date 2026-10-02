@@ -151,6 +151,25 @@ h1, h2, h3 { margin: 0; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
+/* ---------- 安装提示条 ---------- */
+.install-hint {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--primary-soft);
+  border: 2px solid var(--primary);
+  border-radius: var(--r-base);
+  padding: 10px 14px; margin-bottom: 16px;
+  box-shadow: var(--shadow-soft);
+}
+.hint-emoji { font-size: 20px; line-height: 1; }
+.hint-text { flex: 1 1 200px; font-size: 13.5px; font-weight: 600; color: var(--ink-2); min-width: 0; }
+.hint-btn { padding: 5px 16px; box-shadow: 0 3px 0 0 var(--shadow-3d-btn); flex-shrink: 0; }
+.hint-close {
+  border: none; background: transparent; color: var(--ink-3);
+  font-size: 14px; cursor: pointer; width: 30px; height: 30px;
+  border-radius: 50%; flex-shrink: 0;
+}
+.hint-close:hover { background: rgba(25, 200, 185, .15); color: var(--ink-2); }
+
 /* ---------- 输入控件通用 ---------- */
 .search-input, .toolbar select, .num-input,
 .field input, .field textarea {
