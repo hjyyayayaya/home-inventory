@@ -221,7 +221,7 @@ function renderAlerts() {
     .filter((it) => it.expiryDate && ['soon', 'expired'].includes(expiryInfo(it).code))
     .sort((a, b) => daysUntil(a.expiryDate) - daysUntil(b.expiryDate));
   if (!alertItems.length) {
-    el.innerHTML = '<div class="chart-empty">🎉 太棒了，没有临期或过期的物品</div>';
+    el.innerHTML = '<div class="chart-empty">太棒了，没有临期或过期的物品</div>';
     return;
   }
   const top = alertItems.slice(0, 8);
@@ -231,7 +231,7 @@ function renderAlerts() {
       <span class="alert-name">${escapeHtml(it.name)}</span>
       <span class="alert-right">
         <span class="badge ${info.code === 'expired' ? 'expired' : 'soon'}">${info.label}</span>
-        ${it.location ? `<span class="chip">📍 ${escapeHtml(it.location)}</span>` : ''}
+        ${it.location ? `<span class="chip">${escapeHtml(it.location)}</span>` : ''}
       </span>
     </div>`;
   }).join('') + (alertItems.length > top.length
@@ -330,9 +330,9 @@ function itemCardHtml(it) {
   const low = isLowStock(it);
   const meta = [];
   if (it.category) meta.push(`<span class="chip">${iconHtml(catIcon(it.category))} ${escapeHtml(it.category)}</span>`);
-  if (it.location) meta.push(`<span class="chip">📍 ${escapeHtml(it.location)}</span>`);
-  if (it.expiryDate) meta.push(`<span class="chip">⏳ 保质期至 ${escapeHtml(it.expiryDate)}</span>`);
-  if (it.purchaseDate) meta.push(`<span class="chip">🛒 购于 ${escapeHtml(it.purchaseDate)}</span>`);
+  if (it.location) meta.push(`<span class="chip">${escapeHtml(it.location)}</span>`);
+  if (it.expiryDate) meta.push(`<span class="chip">保质期至 ${escapeHtml(it.expiryDate)}</span>`);
+  if (it.purchaseDate) meta.push(`<span class="chip">购于 ${escapeHtml(it.purchaseDate)}</span>`);
   return `<div class="item-card">
     <div class="item-main">
       <div class="item-name-row">
@@ -342,7 +342,7 @@ function itemCardHtml(it) {
         ${low ? '<span class="badge low">库存不足</span>' : ''}
       </div>
       ${meta.length ? `<div class="item-meta">${meta.join('')}</div>` : ''}
-      ${it.note ? `<div class="item-note">📝 ${escapeHtml(it.note)}</div>` : ''}
+      ${it.note ? `<div class="item-note">${escapeHtml(it.note)}</div>` : ''}
     </div>
     <div class="item-side">
       <div class="qty-stepper">
