@@ -1,7 +1,11 @@
 # 📦 物品收纳管家
 
+**🌐 线上地址（手机安装用）：<https://hjyyayayaya.github.io/home-inventory/>**
+（扫码见 `github-pages-qr.png`；手机 Chrome 打开 → 出现「安装应用」→ 安装后离线可用）
+仓库：<https://github.com/hjyyayayaya/home-inventory> · 本地更新代码后重新上传即可同步线上
+
 一个**纯本地**的家庭物品库存与保质期管理小应用，动物森友会（动物岛）风格的可爱界面。
-无需安装、无需联网、数据不出你的电脑。
+无需安装、无需联网、数据不出你的设备。
 
 界面风格参考开源组件库 [animal-island-ui](https://github.com/guokaigdg/animal-island-ui)
 的设计规范（薄荷绿主色、奶油纸底色、暖棕文字、大圆角、3D 像素阴影、Nunito 圆体），
@@ -51,13 +55,23 @@
 
 ### 安卓手机上使用 📱
 
-前提：手机和电脑连**同一个 Wi-Fi**，电脑上双击 `start-app.bat` 并保持窗口开着。
+**支持「安装应用」的浏览器：Chrome、Edge**（vivo / 小米 / OPPO / 华为等手机自带浏览器
+不支持 PWA 安装，只用它们打开会看到页面里的提示条）。以 vivo 手机为例：
 
-1. 启动后窗口里会显示「手机访问」网址，并自动生成 **`phone-qr.png`** 二维码；
-2. 手机浏览器/微信「扫一扫」二维码（或手动输入网址），即可打开应用；
-3. 手机打不开时：双击 `allow-phone-access.bat` 放行 Windows 防火墙（需管理员确认），
-   或在第一次启动弹出的防火墙提示里点「允许访问」，然后重试；
-4. 在手机 Chrome 菜单里点 **「添加到主屏幕」**，桌面就会出现应用图标，全屏体验。
+1. 在 vivo 应用商店搜索安装 **Microsoft Edge**（或 Chrome）；
+2. 用 Edge 打开 <https://hjyyayayaya.github.io/home-inventory/>；
+   （网址可用微信发给自己，或扫项目里的 `github-pages-qr.png`）
+3. 菜单 → **添加到主屏幕 / 安装应用**，确认后桌面出现应用图标；
+4. 从桌面图标点开就是全屏独立应用，**离线可用**。
+
+页面本身也会自动检测：用不支持的浏览器打开时，顶部会出现提示条告诉你该怎么做。
+
+> 用自带浏览器直接访问也能正常记账（数据存在该浏览器里），只是没有
+> 「安装成 App」和离线能力 —— 想要完整体验请用 Chrome / Edge 打开一次并安装。
+
+**局域网直连（备用方案）**：GitHub 访问慢时，可让手机和电脑连同一 Wi-Fi，
+电脑双击 `start-app.bat`，手机扫 `phone-qr.png` 直接访问电脑上的版本
+（打不开就双击 `allow-phone-access.bat` 放行防火墙）。
 
 手机端的几点说明：
 
