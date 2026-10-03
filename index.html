@@ -21,6 +21,7 @@
     <symbol id="ic-food" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M32 20c-8-6-20-2-20 12 0 12 9 20 20 20s20-8 20-20c0-14-12-18-20-12z" stroke-dasharray="34 7 26 9 20"/><path d="M32 20v-8"/><path d="M32 14c4-6 10-6 12-6-1 5-5 9-12 9" fill="#ECA08D" stroke-width="3"/></symbol>
     <symbol id="ic-med" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><g transform="rotate(-25 32 33)"><rect x="12" y="24" width="40" height="18" rx="9" stroke-dasharray="30 7 22 8"/><path d="M21 24h11v18H21a9 9 0 0 1-9-9 9 9 0 0 1 9-9z" fill="#ECA08D" stroke-width="3"/><path d="M32 24v18"/></g></symbol>
     <symbol id="ic-bottle" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect x="20" y="24" width="24" height="28" rx="6" stroke-dasharray="26 7 18 8"/><rect x="27" y="12" width="10" height="12" rx="2" fill="#FDFBF5"/><path d="M37 16h7l-3 4"/></symbol>
+    <symbol id="ic-house" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 30L32 12l20 18" fill="#F6AFA3"/><path d="M18 30v20a3 3 0 0 0 3 3h22a3 3 0 0 0 3-3V30" fill="#F6AFA3"/><path d="M27 53V40a5 5 0 0 1 10 0v13"/></symbol>
     <symbol id="ic-headphones" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 40v-8a18 18 0 0 1 36 0v8" stroke-dasharray="26 7 20 8"/><rect x="10" y="34" width="10" height="16" rx="4" fill="#ECA08D" stroke-width="3"/><rect x="44" y="34" width="10" height="16" rx="4"/></symbol>
     <symbol id="ic-tee" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14l-10 8 6 10 6-3v21h26V29l6 3 6-10-10-8h-6a8 8 0 0 1-14 0z" stroke-dasharray="30 7 24 8 18"/></symbol>
     <symbol id="ic-box" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="26" width="36" height="24" rx="4" stroke-dasharray="24 7 18 8"/><rect x="10" y="18" width="44" height="10" rx="3"/><path d="M32 18v32"/><path d="M32 18c-8 0-12-4-10-8 3-3 8 0 10 8 2-8 7-11 10-8 2 4-2 8-10 8z" fill="#ECA08D" stroke-width="3"/></symbol>
@@ -65,8 +66,8 @@
 </header>
 
 <nav class="tabs">
-  <button class="tab active" data-tab="overview">概览</button>
-  <button class="tab" data-tab="items">物品列表</button>
+  <button class="tab active" data-tab="overview"><svg class="ic" aria-hidden="true"><use href="#ic-house"/></svg>小区</button>
+  <button class="tab" data-tab="items"><svg class="ic" aria-hidden="true"><use href="#ic-catface"/></svg>居民</button>
 </nav>
 
 <div class="container">
@@ -82,12 +83,12 @@
 
   <section id="tab-overview" class="tab-panel active">
     <div id="overview-empty" class="empty hidden">
-      <svg class="empty-doodle" viewBox="0 0 120 44" aria-hidden="true"><path d="M8 32q14-6 28-2t30-2 26 2 20-4" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-dasharray="30 6 22 8 18"/><path d="M92 6l3 6 6.5 1-5.5 4 2 6.5-6-3-6 3 2-6.5-5.5-4 6.5-1z" fill="#ECA08D" stroke="none"/></svg>
-      <h2>欢迎使用物品收纳管家</h2>
-      <p>记录家里每件物品的数量和保质期，临期自动提醒，<br>再也不怕东西放到过期忘记吃啦。</p>
+      <svg class="empty-doodle" viewBox="0 0 120 44" aria-hidden="true"><path d="M8 32q14-6 28-2t30-2 26 2 20-4" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-dasharray="30 6 22 8 18"/><path d="M92 6l3 6 6.5 1-5.5 4 2 6.5-6-3-6 3 2-6.5-5.5-4 6.5-1z" fill="#F2695C" stroke="none"/></svg>
+      <h2>小区还空着呢</h2>
+      <p>把第一件物品领进小区，<br>以后保质期、库存都有它替你记着。</p>
       <div class="empty-actions">
-        <button class="btn primary" id="btn-add-first">＋ 添加第一件物品</button>
-        <button class="btn" id="btn-sample">载入示例数据看看</button>
+        <button class="btn primary" id="btn-add-first">＋ 让它住进来</button>
+        <button class="btn" id="btn-sample">先领几位示例居民</button>
       </div>
     </div>
 
@@ -95,7 +96,7 @@
       <div class="stats-grid">
         <div class="stat-card total">
           <div class="stat-num" id="stat-total">0</div>
-          <div class="stat-label">物品总数</div>
+          <div class="stat-label">居民总数</div>
         </div>
         <div class="stat-card warn" data-status="soon" role="button" title="点击查看临期物品">
           <div class="stat-num" id="stat-soon">0</div>
@@ -113,7 +114,7 @@
 
       <div class="panel">
         <div class="panel-head">
-          <h2>保质期提醒</h2>
+          <h2>居民的悄悄话</h2>
           <label class="inline-setting">提前
             <input type="number" id="warn-days" class="num-input" min="1" max="365" value="7">
             天内算「临期」
@@ -164,7 +165,7 @@
 
 </main>
 
-<button id="fab" class="fab" title="添加物品">＋</button>
+<button id="fab" class="fab" title="领一位新居民进来">＋</button>
 
 <div id="modal-overlay" class="modal-overlay hidden">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
