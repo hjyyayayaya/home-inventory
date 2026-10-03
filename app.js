@@ -95,6 +95,19 @@ function isLowStock(item) {
   return item.minStock > 0 && item.quantity <= item.minStock;
 }
 
+/** 把物品当成小区里的居民，生成一句它的"心声" */
+function personify(it) {
+  if (!it.expiryDate) {
+    return isLowStock(it) ? '库存不足啦，记得带新的我回家' : '我没有保质期，可以陪你很久';
+  }
+  const d = daysUntil(it.expiryDate);
+  if (d < 0) return `已经过期 ${-d} 天啦，还记得我吗`;
+  if (d === 0) return '今天到期啦，想被今天用掉';
+  if (d <= state.settings.warnDays) return `还有 ${d} 天到期，想被早点用掉`;
+  if (isLowStock(it)) return '库存不足啦，记得带新的我回家';
+  return `还剩 ${d} 天，可以慢慢来`;
+}
+
 function dateOrNull(v) {
   return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
 }
@@ -221,21 +234,19 @@ function renderAlerts() {
     .filter((it) => it.expiryDate && ['soon', 'expired'].includes(expiryInfo(it).code))
     .sort((a, b) => daysUntil(a.expiryDate) - daysUntil(b.expiryDate));
   if (!alertItems.length) {
-    el.innerHTML = '<div class="chart-empty">太棒了，没有临期或过期的物品</div>';
+    el.innerHTML = '<div class="chart-empty">居民们都被照顾得很好，没有临期或过期的</div>';
     return;
   }
   const top = alertItems.slice(0, 8);
   el.innerHTML = top.map((it) => {
     const info = expiryInfo(it);
-    return `<div class="alert-row" data-action="locate" data-name="${escapeHtml(it.name)}">
-      <span class="alert-name">${escapeHtml(it.name)}</span>
-      <span class="alert-right">
-        <span class="badge ${info.code === 'expired' ? 'expired' : 'soon'}">${info.label}</span>
-        ${it.location ? `<span class="chip">${escapeHtml(it.location)}</span>` : ''}
-      </span>
+    return `<div class="say-bubble" data-action="locate" data-name="${escapeHtml(it.name)}" title="点击去看看它">
+      <span class="say-name">${escapeHtml(it.name)}</span>
+      <span class="badge ${info.code === 'expired' ? 'expired' : 'soon'}">${info.label}</span><br>
+      ${escapeHtml(personify(it))}
     </div>`;
   }).join('') + (alertItems.length > top.length
-    ? `<div class="alert-more">还有 ${alertItems.length - top.length} 件临期/过期物品，去物品列表查看 →</div>`
+    ? `<div class="alert-more">还有 ${alertItems.length - top.length} 位居民想被想起，去居民列表看看 →</div>`
     : '');
 }
 
@@ -342,6 +353,7 @@ function itemCardHtml(it) {
         ${low ? '<span class="badge low">库存不足</span>' : ''}
       </div>
       ${meta.length ? `<div class="item-meta">${meta.join('')}</div>` : ''}
+      ${(['expired', 'soon'].includes(info.code) || low) ? `<div class="item-say">“${escapeHtml(personify(it))}”</div>` : ''}
       ${it.note ? `<div class="item-note">${escapeHtml(it.note)}</div>` : ''}
     </div>
     <div class="item-side">
@@ -366,8 +378,8 @@ function renderList() {
   if (!arr.length) {
     emptyEl.classList.remove('hidden');
     $('#list-empty-text').textContent = state.items.length
-      ? '没有符合条件的物品，试试调整搜索词或筛选条件'
-      : '还没有记录任何物品，点击右下角的 ＋ 开始添加吧';
+      ? '这些居民躲起来了，换个搜索词或筛选条件找找'
+      : '小区还空着，点击右下角的 ＋ 领第一位居民进来';
     listEl.innerHTML = '';
     return;
   }
@@ -393,7 +405,7 @@ function deleteItem(id) {
   state.items = state.items.filter((i) => i.id !== id);
   saveItems();
   renderAll();
-  toast('已删除');
+  toast('它搬走了，小区会想它的');
 }
 
 /* ---------------- 弹窗表单 ---------------- */
@@ -449,7 +461,7 @@ function submitForm(e) {
     toast('已保存修改');
   } else {
     state.items.push({ id: uid(), ...data, createdAt: now, updatedAt: now });
-    toast(`已添加「${data.name}」`);
+    toast(`「${data.name}」搬进了小区`);
   }
   saveItems();
   closeModal();
@@ -782,7 +794,7 @@ function loadSample() {
   state.items.push(...samples);
   saveItems();
   renderAll();
-  toast('已载入 10 件示例物品，可随意修改或删除');
+  toast('10 位示例居民已入住，可随意修改或送走');
 }
 
 /* ---------------- 其他 UI ---------------- */
