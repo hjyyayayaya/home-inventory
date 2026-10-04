@@ -212,7 +212,80 @@ function renderAll() {
   renderList();
 }
 
-function renderStats() {
+/* ---------------- 小区村景插画 ---------------- */
+
+/** 生成大插画：珊瑚小屋 + 真实物品作为居民站在屋前（临期/过期头顶冒感叹号） */
+function renderScene() {
+  const svg = $('#diary-scene');
+  if (!svg) return;
+  const W = 680, GROUND = 252;
+  const parts = [];
+
+  // 天空装饰：云 ×2、太阳、飞鸟两笔
+  parts.push(`<path d="M84 62a10 10 0 0 1 3-18 12 12 0 0 1 23-3 10 10 0 0 1 15 9 7 7 0 0 1-3 12z" fill="#BFD9EE" stroke="#25211F" stroke-width="3" stroke-linejoin="round"/>`);
+  parts.push(`<path d="M520 44a8 8 0 0 1 2-14 10 10 0 0 1 19-2 8 8 0 0 1 12 7 6 6 0 0 1-2 10z" fill="#DCEEE2" stroke="#25211F" stroke-width="2.5" stroke-linejoin="round"/>`);
+  parts.push(`<circle cx="606" cy="86" r="24" fill="#F7E7A6" stroke="#25211F" stroke-width="3"/><path d="M606 50v-10M606 132v-6M646 86h8M560 86h-8M632 60l7-7M574 112l-6 6M636 110l6 6M578 62l-6-6" stroke="#25211F" stroke-width="3" stroke-linecap="round"/>`);
+  parts.push(`<path d="M330 46q7-8 14 0M356 52q6-7 12 0" fill="none" stroke="#25211F" stroke-width="2.5" stroke-linecap="round"/>`);
+
+  // 地面：手绘波浪线
+  parts.push(`<path d="M20 ${GROUND}q60-8 120 0t120 0 120 0 120 0 120 0 58 0" fill="none" stroke="#25211F" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="80 10 60 12 50"/>`);
+
+  // 草丛 ×3
+  const grass = (x, y, s) => `<path d="M${x} ${y}q-3-${10 * s} -8-${12 * s}M${x} ${y}q0-${13 * s} 0-${15 * s}M${x} ${y}q3-${10 * s} 8-${12 * s}" fill="none" stroke="#8fae8b" stroke-width="${3 * s}" stroke-linecap="round"/>`;
+  parts.push(grass(70, GROUND + 2, 1), grass(636, GROUND + 2, .9), grass(206, GROUND + 2, .7));
+
+  // 珊瑚小屋（居中）
+  const hx = 260, hy = GROUND;
+  parts.push(`<path d="M${hx - 96} ${hy - 78}L${hx} ${hy - 176}l96 98z" fill="#25211F"/>`);
+  parts.push(`<path d="M${hx - 78} ${hy - 82}L${hx} ${hy - 158}l78 76z" fill="#F2695C"/>`);
+  parts.push(`<g><path d="M${hx + 46} ${hy - 150}h26v-0" stroke="#25211F" stroke-width="3"/><rect x="${hx + 48}" y="${hy - 186}" width="22" height="38" fill="#FEFBF4" stroke="#25211F" stroke-width="3"/><path d="M${hx + 52} ${hy - 156}q3-6 6 0t6-2" fill="none" stroke="#25211F" stroke-width="2.5"/></g>`);
+  parts.push(`<rect x="${hx - 74}" y="${hy - 82}" width="148" height="82" rx="8" fill="#F2695C" stroke="#25211F" stroke-width="3.5"/>`);
+  parts.push(`<path d="M${hx - 26} ${hy}v-38a26 26 0 0 1 52 0v38z" fill="#FEFBF4" stroke="#25211F" stroke-width="3"/>`);
+  parts.push(`<circle cx="${hx + 12}" cy="${hy - 18}" r="3" fill="#25211F"/>`);
+  // 门里的黑猫（迎客）
+  parts.push(`<g><ellipse cx="${hx - 4}" cy="${hy - 16}" rx="13" ry="12" fill="#25211F"/><path d="M${hx - 15} ${hy - 24}l-3-10 9 5zM${hx + 7} ${hy - 24}l3-10-9 5z" fill="#25211F"/><circle cx="${hx - 8}" cy="${hy - 17}" r="1.8" fill="#FEFBF4"/><circle cx="${hx + 1}" cy="${hy - 17}" r="1.8" fill="#FEFBF4"/></g>`);
+
+  // 居民：真实物品图标沿地面排开（屋左右各一排，最多 9 位）
+  const shown = state.items.slice(0, 9);
+  const slots = [
+    [88, 236], [170, 244], [218, 228],
+    [468, 232], [540, 246], [600, 230],
+    [140, 200], [452, 196], [592, 178],
+  ];
+  shown.forEach((it, i) => {
+    const [x, y] = slots[i];
+    const scale = 0.86 + (i % 3) * 0.07;
+    const code = expiryInfo(it).code;
+    parts.push(`<use href="#ic-${/^([a-z][a-z0-9-]*)$/.test(it.icon || catIcon(it.category)) ? (it.icon || catIcon(it.category)) : 'box'}" x="${x - 24 * scale}" y="${y - 48 * scale}" width="${48 * scale}" height="${48 * scale}"/>`);
+    if (code === 'soon') parts.push(`<g><circle cx="${x + 20}" cy="${y - 58}" r="9" fill="#F7E7A6" stroke="#25211F" stroke-width="2.5"/><text x="${x + 20}" y="${y - 53}" font-size="13" font-weight="900" text-anchor="middle" fill="#25211F">!</text></g>`);
+    else if (code === 'expired') parts.push(`<g><circle cx="${x + 20}" cy="${y - 60}" r="10" fill="#F6AFA3" stroke="#25211F" stroke-width="2.5"/><text x="${x + 20}" y="${y - 55}" font-size="13" font-weight="900" text-anchor="middle" fill="#25211F">!!</text></g>`);
+    else if (isLowStock(it)) parts.push(`<path d="M${x + 14} ${y - 52}q4-8 8 0q4 8-4 8t-4-8z" fill="#BFD9EE" stroke="#25211F" stroke-width="2"/>`);
+  });
+  if (state.items.length > shown.length) {
+    parts.push(`<g><circle cx="66" cy="170" r="20" fill="#F7E7A6" stroke="#25211F" stroke-width="2.5"/><text x="66" y="176" font-size="14" font-weight="900" text-anchor="middle" fill="#25211F">+${state.items.length - shown.length}</text></g>`);
+  }
+
+  svg.innerHTML = parts.join('');
+}
+
+/** 手账页头副标题：入住天数 + 居民数 */
+function renderDiaryHead() {
+  const el = $('#diary-sub');
+  if (!el || !state.items.length) return;
+  const first = state.items.reduce((min, it) =>
+    Math.min(min, Date.parse(it.createdAt) || Infinity), Infinity);
+  const days = Number.isFinite(first)
+    ? Math.max(1, Math.ceil((Date.now() - first) / 86400000))
+    : 1;
+  const m = new Date();
+  el.textContent = `${m.getMonth() + 1}月${m.getDate()}日 · 小区开张第 ${days} 天 · 住着 ${state.items.length} 位居民`;
+}
+
+/* ---------------- 贴纸式统计 ---------------- */
+
+function renderStickerStats() {
+  const el = $('#sticker-row');
+  if (!el) return;
   let soon = 0, expired = 0, low = 0;
   for (const it of state.items) {
     const code = expiryInfo(it).code;
@@ -220,10 +293,24 @@ function renderStats() {
     else if (code === 'expired') expired++;
     if (isLowStock(it)) low++;
   }
-  $('#stat-total').textContent = state.items.length;
-  $('#stat-soon').textContent = soon;
-  $('#stat-expired').textContent = expired;
-  $('#stat-low').textContent = low;
+  const stickers = [
+    { n: state.items.length, label: '居民', cls: 'butter', rot: -4, status: null, title: '小区居民总数' },
+    { n: soon, label: '想被用掉', cls: 'peach', rot: 3, status: 'soon', title: '点击查看临期居民' },
+    { n: expired, label: '过期啦', cls: 'coral', rot: -2, status: 'expired', title: '点击查看过期居民' },
+    { n: low, label: '要补货', cls: 'sky', rot: 4, status: 'low', title: '点击查看库存不足' },
+  ];
+  el.innerHTML = stickers.map((s) => `
+    <button type="button" class="sticker ${s.cls}${s.status ? ' clickable' : ''}"
+      ${s.status ? `data-status="${s.status}"` : ''} title="${s.title}" style="--rot:${s.rot}deg">
+      <span class="sticker-num">${s.n}</span>
+      <span class="sticker-label">${s.label}</span>
+    </button>`).join('');
+}
+
+function renderStats() {
+  renderScene();
+  renderDiaryHead();
+  renderStickerStats();
   $('#overview-empty').classList.toggle('hidden', state.items.length > 0);
   $('#overview-content').classList.toggle('hidden', state.items.length === 0);
 }
@@ -818,14 +905,14 @@ function switchTab(name) {
 function bindEvents() {
   $$('.tab').forEach((t) => t.addEventListener('click', () => switchTab(t.dataset.tab)));
 
-  // 概览：统计卡片点击 → 跳到列表并按状态筛选
-  $$('.stat-card[data-status]').forEach((card) => {
-    card.addEventListener('click', () => {
-      state.filters.status = card.dataset.status;
-      $('#filter-status').value = state.filters.status;
-      switchTab('items');
-      renderList();
-    });
+  // 概览：贴纸统计点击 → 跳到居民列表并按状态筛选
+  $('#sticker-row').addEventListener('click', (e) => {
+    const st = e.target.closest('.sticker[data-status]');
+    if (!st) return;
+    state.filters.status = st.dataset.status;
+    $('#filter-status').value = state.filters.status;
+    switchTab('items');
+    renderList();
   });
 
   // 概览：提醒区点击 → 去列表里搜该物品
