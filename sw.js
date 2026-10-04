@@ -5,7 +5,7 @@
  * 更新程序文件后，把 CACHE 版本号 +1 即可强制刷新缓存。
  * ============================================================ */
 
-const CACHE = 'home-inventory-v19';
+const CACHE = 'home-inventory-v22';
 
 // 应用外壳：离线时至少要能打开页面所需的一切
 const SHELL = [
