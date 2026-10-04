@@ -33,6 +33,10 @@ const ICON_CHOICES = [
 const ROOMS = ['客厅', '卧室', '厨房', '卫生间', '储物间'];
 
 let viewMode = 'grid'; // 图鉴视图：grid / list
+let formTags = []; // 表单里正在编辑的标签
+let reportRange = 'month'; // 分析账单：month / year
+const LS_SHOP = 'homeInventory.shoplist.v1';
+let shopList = []; // 手动添加的采购项 {name, done}
 
 const state = {
   items: [],
@@ -93,12 +97,40 @@ function fmtNum(n) {
 }
 
 function expiryInfo(item) {
-  if (!item.expiryDate) return { code: 'none', label: '无保质期' };
+  if (!item.expiryDate) return { code: 'none', label: '无保质期', lvl: '' };
   const d = daysUntil(item.expiryDate);
-  if (d < 0) return { code: 'expired', label: `已过期 ${-d} 天` };
-  if (d === 0) return { code: 'soon', label: '今天到期' };
-  if (d <= state.settings.warnDays) return { code: 'soon', label: `${d} 天后到期` };
-  return { code: 'ok', label: `剩 ${d} 天` };
+  if (d < 0) return { code: 'expired', label: `已过期 ${-d} 天`, lvl: 'red' };
+  if (d === 0) return { code: 'soon', label: '今天到期', lvl: 'orange' };
+  if (d <= 7) return { code: 'soon', label: `${d} 天后到期`, lvl: 'orange' };
+  if (d <= state.settings.warnDays) return { code: 'soon', label: `${d} 天后到期`, lvl: 'yellow' };
+  return { code: 'ok', label: `剩 ${d} 天`, lvl: '' };
+}
+
+/** 徽章配色：临期黄 / 7天内橙 / 过期红 */
+function badgeClass(info) {
+  return info.code === 'soon' ? (info.lvl === 'orange' ? 'urgent' : 'soon') : info.code;
+}
+
+/** 开封后的到期日（有开封记录才算） */
+function openDue(it) {
+  if (!it.openedDate || !it.openLifeDays) return null;
+  const d = new Date(it.openedDate);
+  d.setDate(d.getDate() + it.openLifeDays);
+  return toYMD(d);
+}
+
+/** 消耗速度预测：按消耗日志估算日均用量 → 预计用完日期 */
+function forecast(it) {
+  const logs = (it.log || []).filter((l) => l.t === '消耗' && l.q < 0);
+  if (!logs.length) return null;
+  const days = logs.map((l) => Date.parse(l.d)).filter(Number.isFinite).sort((a, b) => a - b);
+  if (!days.length) return null;
+  const span = Math.max((Date.now() - days[0]) / 86400000, 7);
+  const totalUsed = logs.reduce((sum, l) => sum + Math.abs(l.q), 0);
+  const perDay = totalUsed / span;
+  if (perDay <= 0) return null;
+  const daysLeft = Math.ceil((it.quantity || 0) / perDay);
+  return { perDay: +perDay.toFixed(2), daysLeft, date: offsetDate(daysLeft) };
 }
 
 function isLowStock(item) {
@@ -140,6 +172,29 @@ function buildReminders() {
       const last = it.log && it.log.length ? it.log[0].d : (it.createdAt || '').slice(0, 10);
       list.push({ it, icon, type: 'check', title: `${it.name} 已经 30 天没盘点了`, sub: last ? `上次记录 ${last}` : '入住后还没盘点过', date: last, id: it.id });
     }
+    // 开封后保质期
+    const od = openDue(it);
+    if (it.remind && od) {
+      const d = daysUntil(od);
+      if (d < 0) list.push({ it, icon, type: 'expired', title: `${it.name} 开封后 ${it.openLifeDays} 天已用完`, sub: `开封后到期日 ${od}`, date: od, id: it.id });
+      else if (d <= state.settings.warnDays) list.push({ it, icon, type: 'expire', title: `${it.name} 开封后还剩 ${d} 天`, sub: `开封后到期日 ${od}`, date: od, id: it.id });
+    }
+    // 维保提醒（家电保养 / 数码保修 / 年检）
+    if (it.remind && it.maintainCycleDays && it.lastMaintainDate) {
+      const due = new Date(it.lastMaintainDate);
+      due.setDate(due.getDate() + it.maintainCycleDays);
+      const dd = toYMD(due);
+      const left = daysUntil(dd);
+      if (left <= 0) list.push({ it, icon, type: 'check', title: `${it.name} 该保养 / 维护啦`, sub: `周期每 ${it.maintainCycleDays} 天 · 应于 ${dd}`, date: dd, id: it.id });
+      else if (left <= 7) list.push({ it, icon, type: 'check', title: `${it.name} 将在 ${left} 天后到维保期`, sub: `应于 ${dd} 前后维护`, date: dd, id: it.id });
+    }
+    // 消耗速度预测：提前 7 天提醒补货
+    if (it.remind && it.minStock > 0) {
+      const fc = forecast(it);
+      if (fc && fc.daysLeft <= 7) {
+        list.push({ it, icon, type: 'restock', title: `${it.name} 按现在的用量约 ${fc.daysLeft} 天后用完`, sub: `日均 ${fc.perDay} ${it.unit} · 预计 ${fc.date} 用完，提前买起来`, date: fc.date, id: it.id });
+      }
+    }
   }
   list.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
   return list;
@@ -169,6 +224,11 @@ function normalizeItem(raw) {
     note: s(raw.note),
     price: num(raw.price),
     remind: raw.remind === false ? false : true,
+    tags: Array.isArray(raw.tags) ? raw.tags.map((t) => s(String(t)).slice(0, 12)).filter(Boolean).slice(0, 8) : [],
+    openedDate: dateOrNull(raw.openedDate),
+    openLifeDays: raw.openLifeDays ? num(raw.openLifeDays) : 0,
+    maintainCycleDays: raw.maintainCycleDays ? num(raw.maintainCycleDays) : 0,
+    lastMaintainDate: dateOrNull(raw.lastMaintainDate),
     usage: raw.usage === 'idle' ? 'idle' : 'often',
     log: Array.isArray(raw.log)
       ? raw.log.filter((l) => l && typeof l.d === 'string').slice(0, 60)
@@ -259,6 +319,143 @@ function renderAll() {
   renderBook();
   renderCalendar();
   renderMine();
+}
+
+/* ---------------- 采购小票（统一采购清单） ---------------- */
+
+function loadShop() {
+  try { shopList = JSON.parse(localStorage.getItem(LS_SHOP)) || []; }
+  catch { shopList = []; }
+  shopList = Array.isArray(shopList) ? shopList.filter((m) => m && m.name) : [];
+}
+
+function saveShop() {
+  localStorage.setItem(LS_SHOP, JSON.stringify(shopList));
+}
+
+function openShopPage() {
+  loadShop();
+  renderShop();
+  $('#page-shop').classList.remove('hidden');
+  $('#page-shop').scrollTop = 0;
+}
+
+function closeShopPage() {
+  $('#page-shop').classList.add('hidden');
+  renderAll();
+}
+
+function renderShop() {
+  const receipt = $('#shop-receipt');
+  if (!receipt) return;
+  const auto = restockItems();
+  const rows = auto.map((it) => `
+    <label class="rc-row">
+      <input type="checkbox" data-buy="${it.id}">
+      <span class="rc-name">${iconHtml(it.icon || catIcon(it.category))} ${escapeHtml(it.name)}</span>
+      <span class="rc-qty">补 ${buyQtyOf(it)} ${escapeHtml(it.unit)}</span>
+    </label>`).join('');
+  const manual = shopList.map((m, i) => `
+    <label class="rc-row ${m.done ? 'done' : ''}">
+      <input type="checkbox" data-manual="${i}" ${m.done ? 'checked' : ''}>
+      <span class="rc-name">${escapeHtml(m.name)}</span>
+    </label>`).join('');
+  receipt.innerHTML = `
+    <div class="rc-head">🛒 采购小票 · ${todayStr()}</div>
+    <div class="rc-sub">${auto.length} 件自动补货${shopList.length ? ` · ${shopList.length} 件手动添加` : ''}</div>
+    ${rows || '<div class="rc-empty">暂时没有需要补货的居民，家里满满当当～</div>'}
+    ${manual ? `<div class="rc-div">· 手动添加 ·</div>${manual}` : ''}
+    <div class="rc-foot">✂ - - - - - - - - - - - - - - - -</div>`;
+}
+
+function shareShopList() {
+  const auto = restockItems().map((it) => `${it.name} 补${buyQtyOf(it)}${it.unit}`);
+  const manual = shopList.filter((m) => !m.done).map((m) => m.name);
+  const text = '🛒 家庭采购清单：\n' + [...auto, ...manual].map((x) => '· ' + x).join('\n');
+  if (navigator.share) {
+    navigator.share({ title: '家庭采购清单', text }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(text).then(() => toast('清单已复制，去粘贴给家人吧')).catch(() => toast('复制失败，请手动抄写'));
+  }
+}
+
+/* ---------------- 消费与闲置分析（账单页） ---------------- */
+
+function openReportPage() {
+  renderReport();
+  $('#page-report').classList.remove('hidden');
+  $('#page-report').scrollTop = 0;
+}
+
+function closeReportPage() {
+  $('#page-report').classList.add('hidden');
+}
+
+function renderReport() {
+  const chips = $('#report-range');
+  if (chips) chips.innerHTML = [['month', '本月'], ['year', '今年']].map(([v, l]) =>
+    `<button type="button" class="tag-chip${reportRange === v ? ' selected' : ''}" data-range="${v}">${l}</button>`).join('');
+  const body = $('#report-body');
+  if (!body) return;
+
+  const now = new Date();
+  const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const yy = String(now.getFullYear());
+  const inRange = (ds) => ds && (reportRange === 'month' ? ds.slice(0, 7) === ym : ds.slice(0, 4) === yy);
+
+  let spend = 0, waste = 0, idle = 0, expiredN = 0;
+  for (const it of state.items) {
+    if (it.price && inRange(it.purchaseDate)) spend += it.price * (it.quantity || 1);
+    const d = it.expiryDate ? daysUntil(it.expiryDate) : null;
+    if (d !== null && d < 0) {
+      expiredN++;
+      if (it.price) waste += it.price * (it.quantity || 1);
+    }
+    if ((it.usage || 'often') === 'idle') idle++;
+  }
+  const total = state.items.length;
+  const idlePct = total ? Math.round(idle / total * 100) : 0;
+
+  // 手绘甜甜圈：闲置占比
+  const dash = Math.round(idlePct * 2.2);
+  const donut = `
+    <div class="donut-wrap">
+      <svg viewBox="0 0 120 120" class="donut">
+        <circle cx="60" cy="60" r="46" fill="none" stroke="#F4F1E9" stroke-width="18"/>
+        <circle cx="60" cy="60" r="46" fill="none" stroke="#FAD2DC" stroke-width="18"
+          stroke-dasharray="${dash} 220" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+        <text x="60" y="66" text-anchor="middle" font-size="24" fill="#25211F" style="font-family:var(--font-cute)">${idlePct}%</text>
+      </svg>
+      <span>闲置物品占比（${idle}/${total}）</span>
+    </div>`;
+
+  // 常用物品 TOP10（按数量）
+  const top = state.items.filter((it) => (it.usage || 'often') === 'often')
+    .sort((a, b) => b.quantity - a.quantity).slice(0, 10);
+  const maxQ = Math.max(1, ...top.map((t) => t.quantity));
+  const topHtml = top.length ? top.map((it, i) => `
+    <div class="bar-row">
+      <span class="bar-label">${iconHtml(it.icon || catIcon(it.category))}${escapeHtml(it.name)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(8, Math.round(it.quantity / maxQ * 100))}%"></div></div>
+      <span class="bar-val">${fmtNum(it.quantity)}</span>
+    </div>`).join('') : '<div class="chart-empty">还没有常用物品</div>';
+
+  const copy = [];
+  if (idlePct >= 30 && idle > 0) copy.push(`今年有 ${idle} 件物品一次都没怎么用过，它们在家园里快孤单啦 🥺`);
+  if (waste > 0) copy.push(`过期浪费了约 ${fmtNum(waste)} 元，下次少买一点点`);
+  if (spend > 0) copy.push(`这段时间为家里添置了约 ${fmtNum(spend)} 元的宝贝`);
+  if (!copy.length) copy.push('数据还不够多，继续记录就能看到有趣的分析啦');
+
+  body.innerHTML = `
+    <div class="panel"><h2>💰 这段时间的花费</h2>
+      <div class="report-big"><b>${spend ? fmtNum(spend) : '0'}</b><span>元</span></div>
+      ${copy.map((c) => `<p class="report-copy">✿ ${escapeHtml(c)}</p>`).join('')}
+    </div>
+    <div class="panel"><h2>🌙 闲置占比</h2>${donut}</div>
+    <div class="panel"><h2>⭐ 常用物品 TOP10</h2>${topHtml}</div>
+    <div class="panel"><h2>😱 过期浪费</h2>
+      ${expiredN ? `<p class="report-copy">有 ${expiredN} 位居民过期了，浪费约 <b>${fmtNum(waste)} 元</b></p>` : '<div class="chart-empty">没有过期浪费，很棒！</div>'}
+    </div>`;
 }
 
 /* ---------------- 我的（个人中心） ---------------- */
@@ -380,11 +577,28 @@ function renderDiaryHead() {
 
 /* ---------------- 贴纸式统计 ---------------- */
 
+function restockItems() {
+  return state.items.filter((it) => it.minStock > 0 && it.quantity <= it.minStock);
+}
+
+function buyQtyOf(it) {
+  return Math.max(1, Math.ceil((it.minStock || 0) - it.quantity + 1));
+}
+
+function renderShopBubble() {
+  const el = $('#shop-bubble');
+  if (!el) return;
+  const n = restockItems().length;
+  el.classList.toggle('hidden', !n);
+  if (n) el.innerHTML = `🛒 采购小票上有 <b>${n}</b> 件物品等着补货，点我看看 →`;
+}
+
 function renderStats() {
   renderDiaryHead();
   renderDataCards();
   renderMap();
   renderBellBadge();
+  renderShopBubble();
   $('#overview-empty').classList.toggle('hidden', state.items.length > 0);
   $('#overview-content').classList.toggle('hidden', state.items.length === 0);
 }
@@ -431,7 +645,7 @@ function renderAlerts() {
     const info = expiryInfo(it);
     return `<div class="say-bubble" data-action="locate" data-name="${escapeHtml(it.name)}" title="点击去看看它">
       <span class="say-name">${escapeHtml(it.name)}</span>
-      <span class="badge ${info.code === 'expired' ? 'expired' : 'soon'}">${info.label}</span><br>
+      <span class="badge ${badgeClass(info)}">${info.label}</span><br>
       ${escapeHtml(personify(it))}
     </div>`;
   }).join('') + (alertItems.length > top.length
@@ -491,6 +705,11 @@ function renderTagChips() {
     `<button type="button" class="tag-chip${f.status === v && !rf ? ' selected' : ''}" data-status="${v}">${l}</button>`).join('');
   html += ROOMS.map((r) =>
     `<button type="button" class="tag-chip${rf === r ? ' selected' : ''}" data-room="${escapeHtml(r)}">${r}</button>`).join('');
+  // 自定义标签分组
+  const tags = distinctValues((it) => '').length ? [] : [];
+  const tagSet = new Set();
+  for (const it of state.items) for (const t of (it.tags || [])) tagSet.add(t);
+  for (const t of tagSet) html += `<button type="button" class="tag-chip tag-only${state.tagFilter === t ? ' selected' : ''}" data-tag="${escapeHtml(t)}">#${escapeHtml(t)}</button>`;
   el.innerHTML = html;
 }
 
@@ -512,6 +731,7 @@ function filteredItems() {
       if (expiryInfo(it).code !== f.status) return false;
     }
     if (state.roomFilter && !(it.location || '').includes(state.roomFilter)) return false;
+    if (state.tagFilter && !(it.tags || []).includes(state.tagFilter)) return false;
     return true;
   });
   const byName = (a, b) => a.name.localeCompare(b.name, 'zh');
@@ -544,9 +764,10 @@ function renderBook() {
     return `<button type="button" class="book-card owned" data-id="${it.id}" title="点击看小档案">
       ${iconHtml(it.icon || catIcon(it.category), 'book-ic')}
       <span class="book-name">${escapeHtml(it.name)}</span>
-      <span class="badge ${info.code}">${info.label}</span>
+      <span class="badge ${badgeClass(info)}">${info.label}</span>
       ${usage}
       <span class="book-qty">×${fmtNum(it.quantity)} ${escapeHtml(it.unit)}</span>
+      ${(it.tags || []).length ? `<span class="book-tags">${(it.tags || []).map((t) => '#' + escapeHtml(t)).join(' ')}</span>` : ''}
     </button>`;
   }).join('');
 
@@ -711,7 +932,7 @@ function openDetail(id) {
   $('#pd-icon').setAttribute('href', '#ic-' + iconId);
   $('#pd-name').textContent = it.name;
   $('#pd-badges').innerHTML =
-    `<span class="badge ${info.code}">${info.label}</span>` +
+    `<span class="badge ${badgeClass(info)}">${info.label}</span>` +
     (isLowStock(it) ? '<span class="badge low">库存不足</span>' : '') +
     (it.usage === 'idle' ? '<span class="badge idle-b">闲置中</span>' : '') +
     (it.category ? `<span class="chip">${iconHtml(catIcon(it.category))} ${escapeHtml(it.category)}</span>` : '');
@@ -722,11 +943,16 @@ function openDetail(id) {
       ${dRow('存放位置', escapeHtml(it.location))}
       ${dRow('总数量', `${fmtNum(it.quantity)} ${escapeHtml(it.unit)}`)}
       ${dRow('使用状态', it.usage === 'idle' ? '闲置中' : '常用')}
+      ${(it.tags || []).length ? dRow('标签', (it.tags || []).map((t) => '#' + escapeHtml(t)).join(' ')) : ''}
     </div>
     <div class="panel info-card"><h2>时间信息</h2>
       ${dRow('购入日期', it.purchaseDate)}
       ${dRow('保质期至', it.expiryDate)}
       ${dRow('过期提醒', it.remind ? '已开启 🔔' : '已关闭')}
+      ${dRow('开封日期', it.openedDate)}
+      ${dRow('开封后可用', openDue(it) ? `${it.openLifeDays} 天 · 至 ${openDue(it)}` : '')}
+      ${dRow('维保周期', it.maintainCycleDays ? `每 ${it.maintainCycleDays} 天` : '')}
+      ${dRow('上次维护', it.lastMaintainDate)}
     </div>
     <div class="panel info-card"><h2>价值信息</h2>
       ${dRow('单价', it.price ? `${fmtNum(it.price)} 元` : '')}
@@ -848,6 +1074,17 @@ function openForm(item) {
     form.elements['minStock'].value = fmtNum(item.minStock);
     form.elements['note'].value = item.note;
   }
+  formTags = item ? [...(item.tags || [])] : [];
+  renderFormTags();
+  form.elements['openedDate'].value = item ? (item.openedDate || '') : '';
+  form.elements['openLifeDays'].value = item && item.openLifeDays ? item.openLifeDays : '';
+  form.elements['maintainCycleDays'].value = item && item.maintainCycleDays ? item.maintainCycleDays : '';
+  form.elements['lastMaintainDate'].value = item ? (item.lastMaintainDate || '') : '';
+  const ms = item ? fmtNum(item.minStock) : 0;
+  form.elements['minStock'].value = ms;
+  const slider = $('#f-minstock');
+  slider.value = Math.min(20, parseFloat(ms) || 0);
+  $('#f-minstock-val').textContent = slider.value;
   renderCatSelect();
   renderLocChips();
   renderUsageChips();
@@ -879,6 +1116,14 @@ function renderUsageChips() {
     `<button type="button" class="cat-chip${state.formUsage === v ? ' selected' : ''}" data-usage="${v}">${l}</button>`).join('');
 }
 
+
+function renderFormTags() {
+  const el = $('#f-tag-list');
+  if (!el) return;
+  el.innerHTML = formTags.map((t) =>
+    `<span class="chip">#${escapeHtml(t)} <button type="button" class="tag-x" data-del="${escapeHtml(t)}" title="移除">✕</button></span>`).join('');
+}
+
 function setRemindToggle(on) {
   const t = $('#f-remind');
   if (!t) return;
@@ -904,6 +1149,11 @@ function submitForm(e) {
     usage: state.formUsage,
     minStock: Math.max(0, parseFloat(fd.get('minStock')) || 0),
     note: String(fd.get('note') || '').trim(),
+    tags: [...formTags],
+    openedDate: dateOrNull(fd.get('openedDate')),
+    openLifeDays: parseFloat(fd.get('openLifeDays')) || 0,
+    maintainCycleDays: parseFloat(fd.get('maintainCycleDays')) || 0,
+    lastMaintainDate: dateOrNull(fd.get('lastMaintainDate')),
   };
   if (!data.name) { toast('先给居民起个名字吧'); return; }
   const now = new Date().toISOString();
@@ -1308,10 +1558,11 @@ function bindEvents() {
   $('#search').addEventListener('input', (e) => { state.filters.q = e.target.value; renderBook(); });
   $('#sort').addEventListener('change', (e) => { state.filters.sort = e.target.value; renderBook(); });
   $('#tag-chips').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-status],[data-room]');
+    const b = e.target.closest('[data-status],[data-room],[data-tag]');
     if (!b) return;
     if (b.dataset.status) state.filters.status = b.dataset.status;
     if (b.dataset.room) state.roomFilter = state.roomFilter === b.dataset.room ? '' : b.dataset.room;
+    if (b.dataset.tag) state.tagFilter = state.tagFilter === b.dataset.tag ? '' : b.dataset.tag;
     renderTagChips();
     renderBook();
   });
@@ -1475,6 +1726,76 @@ function bindEvents() {
     if (b) startEditCategory(b.dataset.name);
   });
 
+  // 最低库存滑条
+  $('#f-minstock').addEventListener('input', (e) => {
+    $('#f-minstock-val').textContent = e.target.value;
+  });
+
+  // 自定义标签输入
+  $('#f-tag-add').addEventListener('click', () => {
+    const v = $('#f-tag-input').value.trim();
+    if (!v) return;
+    if (formTags.includes(v)) { toast('这个标签已经有了'); return; }
+    formTags.push(v);
+    $('#f-tag-input').value = '';
+    renderFormTags();
+  });
+  $('#f-tag-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); $('#f-tag-add').click(); }
+  });
+  $('#f-tag-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-del]');
+    if (!b) return;
+    formTags = formTags.filter((t) => t !== b.dataset.del);
+    renderFormTags();
+  });
+
+  // 采购小票
+  $('#shop-bubble').addEventListener('click', openShopPage);
+  $('#menu-shop').addEventListener('click', openShopPage);
+  $('#shop-back').addEventListener('click', closeShopPage);
+  $('#shop-receipt').addEventListener('change', (e) => {
+    if (e.target.dataset.buy) {
+      const it = state.items.find((i) => i.id === e.target.dataset.buy);
+      if (!it) return;
+      const q = buyQtyOf(it);
+      it.quantity = (parseFloat(it.quantity) || 0) + q;
+      it.updatedAt = new Date().toISOString();
+      it.log = it.log || [];
+      it.log.unshift({ d: todayStr(), t: '入库', q });
+      it.log = it.log.slice(0, 60);
+      saveItems();
+      renderShop();
+      renderAll();
+      toast(`已购入「${it.name}」×${q}，自动入库啦`);
+    } else if (e.target.dataset.manual !== undefined) {
+      const i = +e.target.dataset.manual;
+      if (shopList[i]) shopList[i].done = e.target.checked;
+      saveShop();
+    }
+  });
+  $('#shop-add-btn').addEventListener('click', () => {
+    const v = $('#shop-add-name').value.trim();
+    if (!v) { toast('先写上要买什么'); return; }
+    loadShop();
+    shopList.push({ name: v, done: false });
+    saveShop();
+    $('#shop-add-name').value = '';
+    renderShop();
+  });
+  $('#shop-share').addEventListener('click', shareShopList);
+
+  // 分析报告
+  $('#btn-report').addEventListener('click', openReportPage);
+  $('#menu-report').addEventListener('click', openReportPage);
+  $('#report-back').addEventListener('click', closeReportPage);
+  $('#report-range').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-range]');
+    if (!b) return;
+    reportRange = b.dataset.range;
+    renderReport();
+  });
+
   // Esc 关闭所有浮层
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
@@ -1491,6 +1812,7 @@ function bindEvents() {
 
 function init() {
   load();
+  loadShop();
   // 申请持久化存储：告诉浏览器这些数据需要长期保留，降低被自动清理的风险
   if (navigator.storage && typeof navigator.storage.persist === 'function') {
     navigator.storage.persist().catch(() => {});
