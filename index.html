@@ -93,24 +93,21 @@
     </div>
 
     <div id="overview-content">
-      <div class="stats-grid">
-        <div class="stat-card total">
-          <div class="stat-num" id="stat-total">0</div>
-          <div class="stat-label">居民总数</div>
-        </div>
-        <div class="stat-card warn" data-status="soon" role="button" title="点击查看临期物品">
-          <div class="stat-num" id="stat-soon">0</div>
-          <div class="stat-label">临期提醒</div>
-        </div>
-        <div class="stat-card danger" data-status="expired" role="button" title="点击查看过期物品">
-          <div class="stat-num" id="stat-expired">0</div>
-          <div class="stat-label">已过期</div>
-        </div>
-        <div class="stat-card info" data-status="low" role="button" title="点击查看库存不足的物品">
-          <div class="stat-num" id="stat-low">0</div>
-          <div class="stat-label">库存不足</div>
-        </div>
+      <!-- 手账页头：手写大标题 + 日期 + 涂鸦 -->
+      <div class="diary-head">
+        <svg class="doodle-cloud" viewBox="0 0 64 36" aria-hidden="true"><path d="M14 28a8 8 0 0 1 2-15 10 10 0 0 1 19-3 8 8 0 0 1 13 8 6 6 0 0 1-3 10z" fill="#BFD9EE" stroke="#25211F" stroke-width="2.5" stroke-linejoin="round"/></svg>
+        <svg class="doodle-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.5 6.5L21 9l-5 4.5L17.5 21 12 17l-5.5 4L8 13.5 3 9l6.5-.5z" fill="#F7E7A6" stroke="#25211F" stroke-width="2" stroke-linejoin="round"/></svg>
+        <h1 class="diary-title">收纳小区</h1>
+        <p class="diary-sub" id="diary-sub"></p>
       </div>
+
+      <!-- 大插画：由真实物品动态生成的小区村景 -->
+      <div class="diary-scene-wrap">
+        <svg id="diary-scene" viewBox="0 0 680 320" preserveAspectRatio="xMidYMax meet" aria-label="小区村景插画"></svg>
+      </div>
+
+      <!-- 贴纸式统计（点击可跳转筛选） -->
+      <div class="sticker-row" id="sticker-row"></div>
 
       <div class="panel">
         <div class="panel-head">
