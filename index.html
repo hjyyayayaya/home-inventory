@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
-<meta name="theme-color" content="#F7F2E9">
+<meta name="theme-color" content="#FBF8F1">
 <link rel="manifest" href="manifest.json">
 <title>物品收纳管家 · 家庭库存与保质期管理</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
@@ -14,35 +14,36 @@
 </head>
 <body>
 
-<!-- 手绘图标库（crayon-vignette：炭色蜡笔线 + 开放断口 + 蜜桃点缀） -->
+<!-- 手绘图标库（细黑轮廓 + 自然断口 + 马卡龙粉彩） -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
-    <symbol id="ic-food" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M32 20c-8-6-20-2-20 12 0 12 9 20 20 20s20-8 20-20c0-14-12-18-20-12z" stroke-dasharray="34 7 26 9 20"/><path d="M32 20v-8"/><path d="M32 14c4-6 10-6 12-6-1 5-5 9-12 9" fill="#ECA08D" stroke-width="3"/></symbol>
-    <symbol id="ic-med" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><g transform="rotate(-25 32 33)"><rect x="12" y="24" width="40" height="18" rx="9" stroke-dasharray="30 7 22 8"/><path d="M21 24h11v18H21a9 9 0 0 1-9-9 9 9 0 0 1 9-9z" fill="#ECA08D" stroke-width="3"/><path d="M32 24v18"/></g></symbol>
-    <symbol id="ic-bottle" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="20" y="24" width="24" height="28" rx="6" stroke-dasharray="26 7 18 8"/><rect x="27" y="12" width="10" height="12" rx="2" fill="#FDFBF5"/><path d="M37 16h7l-3 4"/></symbol>
-    <symbol id="ic-house" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 30L32 12l20 18" fill="#F6AFA3"/><path d="M18 30v20a3 3 0 0 0 3 3h22a3 3 0 0 0 3-3V30" fill="#F6AFA3"/><path d="M27 53V40a5 5 0 0 1 10 0v13"/></symbol>
+    <symbol id="ic-food" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M32 20c-8-6-20-2-20 12 0 12 9 20 20 20s20-8 20-20c0-14-12-18-20-12z" stroke-dasharray="34 7 26 9 20"/><path d="M32 20v-8"/><path d="M32 14c4-6 10-6 12-6-1 5-5 9-12 9" fill="#FAD2DC" stroke-width="3"/></symbol>
+    <symbol id="ic-med" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><g transform="rotate(-25 32 33)"><rect x="12" y="24" width="40" height="18" rx="9" stroke-dasharray="30 7 22 8"/><path d="M21 24h11v18H21a9 9 0 0 1-9-9 9 9 0 0 1 9-9z" fill="#C7E8D4" stroke-width="3"/><path d="M32 24v18"/></g></symbol>
+    <symbol id="ic-bottle" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="20" y="24" width="24" height="28" rx="6" stroke-dasharray="26 7 18 8"/><rect x="27" y="12" width="10" height="12" rx="2" fill="#F5EBD8"/><path d="M37 16h7l-3 4"/></symbol>
+    <symbol id="ic-house" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 30L32 12l20 18" fill="#FAD2DC"/><path d="M18 30v20a3 3 0 0 0 3 3h22a3 3 0 0 0 3-3V30" fill="#FAD2DC"/><path d="M27 53V40a5 5 0 0 1 10 0v13"/></symbol>
     <symbol id="ic-book" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M32 16c-6-5-15-6-21-4v35c6-2 15-1 21 4 6-5 15-6 21-4V12c-6-2-15-1-21 4z" fill="#C9E4F5"/><path d="M32 16v35"/></symbol>
-    <symbol id="ic-calendar" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="11" y="15" width="42" height="38" rx="8" fill="#FAD2DC"/><path d="M11 27h42"/><path d="M21 9v11M43 9v11"/><circle cx="24" cy="38" r="2.5" fill="#25211F" stroke="none"/><circle cx="33" cy="38" r="2.5" fill="#25211F" stroke="none"/></symbol>
-    <symbol id="ic-headphones" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 40v-8a18 18 0 0 1 36 0v8" stroke-dasharray="26 7 20 8"/><rect x="10" y="34" width="10" height="16" rx="4" fill="#ECA08D" stroke-width="3"/><rect x="44" y="34" width="10" height="16" rx="4"/></symbol>
+    <symbol id="ic-calendar" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="11" y="15" width="42" height="38" rx="8" fill="#F5EBD8"/><path d="M11 27h42"/><path d="M21 9v11M43 9v11"/><circle cx="24" cy="38" r="2.5" fill="#25211F" stroke="none"/><circle cx="33" cy="38" r="2.5" fill="#25211F" stroke="none"/></symbol>
+    <symbol id="ic-bell" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M32 10a14 14 0 0 1 14 14v10l5 9H13l5-9V24A14 14 0 0 1 32 10z" fill="#FAD2DC"/><path d="M26 47a6 6 0 0 0 12 0"/></symbol>
+    <symbol id="ic-headphones" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 40v-8a18 18 0 0 1 36 0v8" stroke-dasharray="26 7 20 8"/><rect x="10" y="34" width="10" height="16" rx="4" fill="#C9E4F5" stroke-width="3"/><rect x="44" y="34" width="10" height="16" rx="4"/></symbol>
     <symbol id="ic-tee" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14l-10 8 6 10 6-3v21h26V29l6 3 6-10-10-8h-6a8 8 0 0 1-14 0z" stroke-dasharray="30 7 24 8 18"/></symbol>
-    <symbol id="ic-box" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="26" width="36" height="24" rx="4" stroke-dasharray="24 7 18 8"/><rect x="10" y="18" width="44" height="10" rx="3"/><path d="M32 18v32"/><path d="M32 18c-8 0-12-4-10-8 3-3 8 0 10 8 2-8 7-11 10-8 2 4-2 8-10 8z" fill="#ECA08D" stroke-width="3"/></symbol>
-    <symbol id="ic-lipstick" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="24" y="34" width="16" height="16" rx="3"/><rect x="26" y="28" width="12" height="6"/><path d="M27 28v-9c0-4 2-7 5-7s5 3 5 7v9z" fill="#ECA08D" stroke-width="3"/></symbol>
-    <symbol id="ic-cream" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="16" y="30" width="32" height="18" rx="7" stroke-dasharray="26 7 18 8"/><rect x="13" y="20" width="38" height="10" rx="5" fill="#ECA08D" stroke-width="3"/></symbol>
-    <symbol id="ic-perfume" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="20" y="26" width="24" height="24" rx="7" stroke-dasharray="24 7 18 8"/><rect x="28" y="18" width="8" height="8" rx="2" fill="#FDFBF5"/><rect x="25" y="10" width="14" height="8" rx="3"/><circle cx="32" cy="38" r="5" fill="#ECA08D" stroke="none"/></symbol>
-    <symbol id="ic-mask" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20c10-6 22-6 32 0 2 12-4 26-16 28-12-2-18-16-16-28z" stroke-dasharray="28 7 22 8"/><ellipse cx="25" cy="32" rx="4" ry="3" fill="#FDFBF5" stroke-width="3"/><ellipse cx="39" cy="32" rx="4" ry="3" fill="#FDFBF5" stroke-width="3"/><path d="M27 42q5 4 10 0"/></symbol>
-    <symbol id="ic-eyeshadow" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="20" width="44" height="26" rx="7" stroke-dasharray="30 7 24 8"/><circle cx="21" cy="33" r="5" fill="#ECA08D" stroke-width="3"/><circle cx="30" cy="33" r="5"/><circle cx="39" cy="33" r="5"/><circle cx="47" cy="33" r="4.5"/></symbol>
-    <symbol id="ic-mirror" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="24" r="13" stroke-dasharray="26 7 16 8"/><circle cx="32" cy="24" r="7" fill="#ECA08D" stroke="none" opacity=".9"/><rect x="28" y="38" width="8" height="16" rx="4" fill="#FDFBF5"/></symbol>
-    <symbol id="ic-comb" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="12" y="22" width="40" height="10" rx="5" fill="#FDFBF5"/><path d="M18 32v14M26 32v14M34 32v14M42 32v14"/></symbol>
-    <symbol id="ic-lotion" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="25" y="44" width="14" height="8" rx="2" fill="#FDFBF5"/><path d="M24 44l3-26h10l3 26z" stroke-dasharray="20 7 16 8"/><path d="M27 18h10" stroke-width="3"/></symbol>
-    <symbol id="ic-paw" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="32" cy="43" rx="11" ry="8.5" fill="#ECA08D" stroke-width="3"/><circle cx="16" cy="31" r="6"/><circle cx="26" cy="22" r="6"/><circle cx="38" cy="22" r="6"/><circle cx="48" cy="31" r="6"/></symbol>
-    <symbol id="ic-catface" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 27l-3-13 13 7z" fill="#FDFBF5"/><path d="M45 27l3-13-13 7z" fill="#FDFBF5"/><circle cx="32" cy="36" r="17" stroke-dasharray="34 7 26 8"/><circle cx="25" cy="34" r="2.6" fill="#25211F" stroke="none"/><circle cx="39" cy="34" r="2.6" fill="#25211F" stroke="none"/><path d="M30 40h4l-2 3z" fill="#ECA08D" stroke-width="2.5"/><path d="M14 34h8M14 40h8M50 34h-8M50 40h-8" stroke-width="3"/></symbol>
-    <symbol id="ic-dogface" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="34" r="17" stroke-dasharray="34 7 26 8" fill="#FDFBF5"/><path d="M17 24c-7 3-9 13-2 17 4 2 8-2 8-8"/><path d="M47 24c7 3 9 13 2 17-4 2-8-2-8-8"/><circle cx="26" cy="32" r="2.6" fill="#25211F" stroke="none"/><circle cx="38" cy="32" r="2.6" fill="#25211F" stroke="none"/><ellipse cx="32" cy="40" rx="4" ry="3" fill="#25211F" stroke="none"/></symbol>
-    <symbol id="ic-collar" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="29" r="15" stroke-width="9" stroke-dasharray="30 8 22 9"/><circle cx="32" cy="29" r="15" stroke-width="2.5"/><circle cx="32" cy="50" r="7" fill="#ECA08D" stroke-width="3"/></symbol>
-    <symbol id="ic-litter" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 32a14 9 0 0 1 28 0"/><circle cx="26" cy="29" r="2.5" fill="#25211F" stroke="none"/><circle cx="36" cy="27" r="2.5" fill="#25211F" stroke="none"/><path d="M12 34h40l-4 14a6 6 0 0 1-6 4H22a6 6 0 0 1-6-4z" fill="#FDFBF5" stroke-dasharray="26 7 18 8"/></symbol>
-    <symbol id="ic-wand" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 52L38 26" stroke-width="5"/><circle cx="42" cy="22" r="4.5" fill="#ECA08D" stroke-width="3"/><path d="M44 18q4-9 13-9-2 9-11 12"/></symbol>
-    <symbol id="ic-bowl" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="25" cy="24" r="3"/><circle cx="34" cy="20" r="3"/><circle cx="41" cy="26" r="3"/><rect x="10" y="30" width="44" height="7" rx="3.5" fill="#FDFBF5"/><path d="M13 37h38c0 10-8 15-19 15s-19-5-19-15z" fill="#ECA08D" stroke-width="3"/></symbol>
-    <symbol id="ic-petmed" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="20" y="22" width="24" height="28" rx="6" stroke-dasharray="24 7 18 8"/><rect x="26" y="12" width="12" height="10" rx="2" fill="#FDFBF5"/><circle cx="32" cy="36" r="8" fill="#ECA08D" stroke-width="3"/></symbol>
-    <symbol id="ic-petnest" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42a20 20 0 0 1 40 0z" fill="#FDFBF5" stroke-dasharray="30 7 20 8"/><path d="M12 42h40v4a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4z"/><ellipse cx="32" cy="42" rx="10" ry="5.5" fill="#ECA08D" stroke="none" opacity=".85"/></symbol>
+    <symbol id="ic-box" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="26" width="36" height="24" rx="4" stroke-dasharray="24 7 18 8"/><rect x="10" y="18" width="44" height="10" rx="3"/><path d="M32 18v32"/><path d="M32 18c-8 0-12-4-10-8 3-3 8 0 10 8 2-8 7-11 10-8 2 4-2 8-10 8z" fill="#FAD2DC" stroke-width="3"/></symbol>
+    <symbol id="ic-lipstick" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="24" y="34" width="16" height="16" rx="3"/><rect x="26" y="28" width="12" height="6"/><path d="M27 28v-9c0-4 2-7 5-7s5 3 5 7v9z" fill="#FAD2DC" stroke-width="3"/></symbol>
+    <symbol id="ic-cream" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="16" y="30" width="32" height="18" rx="7" stroke-dasharray="26 7 18 8"/><rect x="13" y="20" width="38" height="10" rx="5" fill="#C7E8D4" stroke-width="3"/></symbol>
+    <symbol id="ic-perfume" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="20" y="26" width="24" height="24" rx="7" stroke-dasharray="24 7 18 8"/><rect x="28" y="18" width="8" height="8" rx="2" fill="#F5EBD8"/><rect x="25" y="10" width="14" height="8" rx="3"/><circle cx="32" cy="38" r="5" fill="#FAD2DC" stroke="none"/></symbol>
+    <symbol id="ic-mask" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20c10-6 22-6 32 0 2 12-4 26-16 28-12-2-18-16-16-28z" stroke-dasharray="28 7 22 8"/><ellipse cx="25" cy="32" rx="4" ry="3" fill="#fff" stroke-width="3"/><ellipse cx="39" cy="32" rx="4" ry="3" fill="#fff" stroke-width="3"/><path d="M27 42q5 4 10 0"/></symbol>
+    <symbol id="ic-eyeshadow" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="20" width="44" height="26" rx="7" stroke-dasharray="30 7 24 8"/><circle cx="21" cy="33" r="5" fill="#FAD2DC" stroke-width="3"/><circle cx="30" cy="33" r="5"/><circle cx="39" cy="33" r="5"/><circle cx="47" cy="33" r="4.5"/></symbol>
+    <symbol id="ic-mirror" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="24" r="13" stroke-dasharray="26 7 16 8"/><circle cx="32" cy="24" r="7" fill="#C9E4F5" stroke="none" opacity=".9"/><rect x="28" y="38" width="8" height="16" rx="4" fill="#F5EBD8"/></symbol>
+    <symbol id="ic-comb" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="12" y="22" width="40" height="10" rx="5" fill="#C9E4F5"/><path d="M18 32v14M26 32v14M34 32v14M42 32v14"/></symbol>
+    <symbol id="ic-lotion" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="25" y="44" width="14" height="8" rx="2" fill="#F5EBD8"/><path d="M24 44l3-26h10l3 26z" stroke-dasharray="20 7 16 8"/><path d="M27 18h10" stroke-width="3"/></symbol>
+    <symbol id="ic-paw" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="32" cy="43" rx="11" ry="8.5" fill="#FAD2DC" stroke-width="3"/><circle cx="16" cy="31" r="6"/><circle cx="26" cy="22" r="6"/><circle cx="38" cy="22" r="6"/><circle cx="48" cy="31" r="6"/></symbol>
+    <symbol id="ic-catface" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 27l-3-13 13 7z" fill="#fff"/><path d="M45 27l3-13-13 7z" fill="#fff"/><circle cx="32" cy="36" r="17" stroke-dasharray="34 7 26 8"/><circle cx="25" cy="34" r="2.6" fill="#25211F" stroke="none"/><circle cx="39" cy="34" r="2.6" fill="#25211F" stroke="none"/><path d="M30 40h4l-2 3z" fill="#FAD2DC" stroke-width="2.5"/><path d="M14 34h8M14 40h8M50 34h-8M50 40h-8" stroke-width="3"/></symbol>
+    <symbol id="ic-dogface" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="34" r="17" stroke-dasharray="34 7 26 8" fill="#fff"/><path d="M17 24c-7 3-9 13-2 17 4 2 8-2 8-8"/><path d="M47 24c7 3 9 13 2 17-4 2-8-2-8-8"/><circle cx="26" cy="32" r="2.6" fill="#25211F" stroke="none"/><circle cx="38" cy="32" r="2.6" fill="#25211F" stroke="none"/><ellipse cx="32" cy="40" rx="4" ry="3" fill="#25211F" stroke="none"/></symbol>
+    <symbol id="ic-collar" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="29" r="15" stroke-width="9" stroke-dasharray="30 8 22 9"/><circle cx="32" cy="29" r="15" stroke-width="2.5"/><circle cx="32" cy="50" r="7" fill="#FAD2DC" stroke-width="3"/></symbol>
+    <symbol id="ic-litter" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 32a14 9 0 0 1 28 0"/><circle cx="26" cy="29" r="2.5" fill="#25211F" stroke="none"/><circle cx="36" cy="27" r="2.5" fill="#25211F" stroke="none"/><path d="M12 34h40l-4 14a6 6 0 0 1-6 4H22a6 6 0 0 1-6-4z" fill="#C9E4F5" stroke-dasharray="26 7 18 8"/></symbol>
+    <symbol id="ic-wand" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 52L38 26" stroke-width="5"/><circle cx="42" cy="22" r="4.5" fill="#FAD2DC" stroke-width="3"/><path d="M44 18q4-9 13-9-2 9-11 12"/></symbol>
+    <symbol id="ic-bowl" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="25" cy="24" r="3"/><circle cx="34" cy="20" r="3"/><circle cx="41" cy="26" r="3"/><rect x="10" y="30" width="44" height="7" rx="3.5" fill="#F5EBD8"/><path d="M13 37h38c0 10-8 15-19 15s-19-5-19-15z" fill="#FAD2DC" stroke-width="3"/></symbol>
+    <symbol id="ic-petmed" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="20" y="22" width="24" height="28" rx="6" stroke-dasharray="24 7 18 8"/><rect x="26" y="12" width="12" height="10" rx="2" fill="#F5EBD8"/><circle cx="32" cy="36" r="8" fill="#FAD2DC" stroke-width="3"/></symbol>
+    <symbol id="ic-petnest" viewBox="0 0 64 64" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 42a20 20 0 0 1 40 0z" fill="#C7E8D4" stroke-dasharray="30 7 20 8"/><path d="M12 42h40v4a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4z"/><ellipse cx="32" cy="42" rx="10" ry="5.5" fill="#FAD2DC" stroke="none" opacity=".85"/></symbol>
   </defs>
 </svg>
 
@@ -52,16 +53,15 @@
       <span class="logo"><svg class="ic" style="width:32px;height:32px" aria-hidden="true"><use href="#ic-catface"/></svg></span>
       <div class="brand-text">
         <h1>物品收纳管家</h1>
-        <p class="slogan">记录家里的小宝贝 · 库存和保质期一目了然</p>
+        <p class="slogan">家里的小宝贝们，都住在这个小区里</p>
       </div>
     </div>
     <div class="header-actions">
-      <button id="btn-cats" class="btn" title="管理类目（添加美妆、宠物、小猫……）">🏷 类目</button>
-      <button id="btn-export-json" class="btn" title="导出 JSON 备份文件">导出备份</button>
-      <button id="btn-share" class="btn" hidden title="调出系统分享，把备份存到任意位置（手机端可用）">分享备份</button>
-      <button id="btn-export-csv" class="btn" title="导出 CSV 表格（可用 Excel 打开）">导出CSV</button>
-      <button id="btn-import" class="btn">导入</button>
-      <input type="file" id="file-import" accept=".json,application/json" hidden>
+      <button id="btn-bell" class="btn icon-round" title="提醒中心">
+        <svg class="ic" aria-hidden="true"><use href="#ic-bell"/></svg>
+        <span id="bell-badge" class="bell-badge hidden"></span>
+      </button>
+      <button id="btn-cats" class="btn" title="房间与类目管理">🏷 类目</button>
     </div>
   </div>
 </header>
@@ -77,9 +77,10 @@
 
 <main class="container">
 
+  <!-- ① 家园 -->
   <section id="tab-home" class="tab-panel active">
     <div id="overview-empty" class="empty hidden">
-      <svg class="empty-doodle" viewBox="0 0 120 44" aria-hidden="true"><path d="M8 32q14-6 28-2t30-2 26 2 20-4" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-dasharray="30 6 22 8 18"/><path d="M92 6l3 6 6.5 1-5.5 4 2 6.5-6-3-6 3 2-6.5-5.5-4 6.5-1z" fill="#F2695C" stroke="none"/></svg>
+      <svg class="empty-doodle" viewBox="0 0 120 44" aria-hidden="true"><path d="M8 32q14-6 28-2t30-2 26 2 20-4" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-dasharray="30 6 22 8 18"/><path d="M92 6l3 6 6.5 1-5.5 4 2 6.5-6-3-6 3 2-6.5-5.5-4 6.5-1z" fill="#F4756B" stroke="none"/></svg>
       <h2>小区还空着呢</h2>
       <p>把第一件物品领进小区，<br>以后保质期、库存都有它替你记着。</p>
       <div class="empty-actions">
@@ -89,29 +90,31 @@
     </div>
 
     <div id="overview-content">
-      <!-- 手账页头：手写大标题 + 日期 + 涂鸦 -->
       <div class="diary-head">
-        <svg class="doodle-cloud" viewBox="0 0 64 36" aria-hidden="true"><path d="M14 28a8 8 0 0 1 2-15 10 10 0 0 1 19-3 8 8 0 0 1 13 8 6 6 0 0 1-3 10z" fill="#BFD9EE" stroke="#25211F" stroke-width="2.5" stroke-linejoin="round"/></svg>
-        <svg class="doodle-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.5 6.5L21 9l-5 4.5L17.5 21 12 17l-5.5 4L8 13.5 3 9l6.5-.5z" fill="#F7E7A6" stroke="#25211F" stroke-width="2" stroke-linejoin="round"/></svg>
+        <svg class="doodle-cloud" viewBox="0 0 64 36" aria-hidden="true"><path d="M14 28a8 8 0 0 1 2-15 10 10 0 0 1 19-3 10 10 0 0 1 13 8 6 6 0 0 1-3 10z" fill="#C9E4F5" stroke="#25211F" stroke-width="2.5" stroke-linejoin="round"/></svg>
+        <svg class="doodle-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.5 6.5L21 9l-5 4.5L17.5 21 12 17l-5.5 4L8 13.5 3 9l6.5-.5z" fill="#F5EBD8" stroke="#25211F" stroke-width="2" stroke-linejoin="round"/></svg>
         <h1 class="diary-title">收纳小区</h1>
         <p class="diary-sub" id="diary-sub"></p>
       </div>
 
-      <!-- 大插画：由真实物品动态生成的小区村景 -->
-      <div class="diary-scene-wrap">
-        <svg id="diary-scene" viewBox="0 0 680 320" preserveAspectRatio="xMidYMax meet" aria-label="小区村景插画"></svg>
+      <!-- 核心数据概览 -->
+      <div class="data-cards" id="data-cards"></div>
+
+      <!-- 全景家园地图 -->
+      <div class="map-wrap">
+        <svg id="home-map" viewBox="0 0 680 430" aria-label="家园地图"></svg>
       </div>
 
-      <!-- 贴纸式统计（点击可跳转筛选） -->
-      <div class="sticker-row" id="sticker-row"></div>
+      <!-- 快捷操作 -->
+      <div class="quick-actions">
+        <button type="button" class="btn primary big" id="btn-quick-add">＋ 快速添加物品</button>
+        <button type="button" class="btn big" id="btn-stocktake">✓ 今日一键盘点</button>
+      </div>
 
       <div class="panel">
         <div class="panel-head">
           <h2>居民的悄悄话</h2>
-          <label class="inline-setting">提前
-            <input type="number" id="warn-days" class="num-input" min="1" max="365" value="7">
-            天内算「临期」
-          </label>
+          <button type="button" id="to-reminds" class="link-btn">去提醒中心 →</button>
         </div>
         <div id="alerts-list" class="alerts-list"></div>
       </div>
@@ -129,39 +132,33 @@
     </div>
   </section>
 
-  <!-- 物品图鉴：已拥有的彩色卡片 + 未遇见的灰色剪影 -->
+  <!-- ② 图鉴 -->
   <section id="tab-book" class="tab-panel">
     <div class="diary-head">
       <h1 class="diary-title">居民图鉴</h1>
       <p class="diary-sub">遇见过的都在这里，还没遇见的画成剪影等你</p>
     </div>
     <div class="toolbar">
-      <input type="search" id="search" class="search-input" placeholder="🔍 搜索名称 / 分类 / 位置 / 备注">
-      <select id="filter-status">
-        <option value="all">全部状态</option>
-        <option value="ok">保质期正常</option>
-        <option value="soon">临期</option>
-        <option value="expired">已过期</option>
-        <option value="low">库存不足</option>
-      </select>
-      <select id="filter-category"><option value="all">全部分类</option></select>
-      <select id="filter-location"><option value="all">全部位置</option></select>
+      <input type="search" id="search" class="search-input" placeholder="🔍 搜索物品名称">
       <select id="sort">
         <option value="expiry">排序：临期优先</option>
         <option value="created">排序：最近添加</option>
         <option value="name">排序：按名称</option>
         <option value="qty">排序：数量少优先</option>
       </select>
-      <span id="item-count" class="count"></span>
+      <button type="button" id="view-toggle" class="btn view-toggle" title="切换网格 / 列表">☰ / ⠿</button>
     </div>
+    <div class="tag-scroll" id="tag-chips"></div>
+    <span id="item-count" class="count"></span>
     <div id="book-grid" class="book-grid"></div>
+    <div id="book-list" class="book-list hidden"></div>
     <div id="list-empty" class="empty hidden">
-      <svg class="empty-doodle" viewBox="0 0 120 44" aria-hidden="true"><path d="M8 32q14-6 28-2t30-2 26 2 20-4" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-dasharray="30 6 22 8 18"/><path d="M92 6l3 6 6.5 1-5.5 4 2 6.5-6-3-6 3 2-6.5-5.5-4 6.5-1z" fill="#F2695C" stroke="none"/></svg>
+      <svg class="empty-doodle" viewBox="0 0 120 44" aria-hidden="true"><path d="M8 32q14-6 28-2t30-2 26 2 20-4" fill="none" stroke="#25211F" stroke-width="3" stroke-linecap="round" stroke-dasharray="30 6 22 8 18"/><path d="M92 6l3 6 6.5 1-5.5 4 2 6.5-6-3-6 3 2-6.5-5.5-4 6.5-1z" fill="#F4756B" stroke="none"/></svg>
       <p id="list-empty-text"></p>
     </div>
   </section>
 
-  <!-- 物品记录日历 -->
+  <!-- ⑤ 统计日历 -->
   <section id="tab-calendar" class="tab-panel">
     <div class="diary-head">
       <h1 class="diary-title">物品记录日历</h1>
@@ -176,40 +173,216 @@
       <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
     </div>
     <div id="cal-grid" class="cal-grid"></div>
-    <p class="cal-legend">🏡 搬进小区 · 🛍 购入 · ⏰ 到期 · 点日期看当天记录</p>
+    <p class="cal-legend">＋ 搬进小区 · 图标 = 购入 · ⏰ 到期 · 点日期看当天记录</p>
+
+    <div class="panel">
+      <h2>本月小结</h2>
+      <div class="cal-summary" id="cal-summary"></div>
+    </div>
+
+    <div class="panel theater">
+      <h2>本周物品小剧场</h2>
+      <div id="theater"></div>
+    </div>
+
     <div id="cal-day-panel" class="panel hidden">
       <h2 id="cal-day-title"></h2>
       <div id="cal-day-list"></div>
     </div>
   </section>
 
-</main>
-
-<!-- 居民小档案（详情卡片） -->
-<div id="detail-overlay" class="modal-overlay hidden">
-  <div class="modal detail-modal" role="dialog" aria-modal="true" aria-labelledby="detail-title">
-    <div class="modal-head">
-      <h2 id="detail-title">居民小档案</h2>
-      <button type="button" id="detail-close" class="icon-btn" title="关闭">✕</button>
+  <!-- ⑦ 我的 -->
+  <section id="tab-mine" class="tab-panel">
+    <div class="diary-head">
+      <h1 class="diary-title">我的</h1>
+      <p class="diary-sub">小区长的小窝，也在慢慢长大</p>
     </div>
-    <div class="detail-hero">
-      <svg class="detail-icon" aria-hidden="true"><use id="detail-icon-use" href="#ic-box"/></svg>
-      <div class="detail-info">
-        <div class="detail-name" id="d-name"></div>
-        <div id="d-badges"></div>
-        <div class="item-say" id="d-say"></div>
+    <div class="panel mine-profile">
+      <svg class="mine-avatar" aria-hidden="true"><use href="#ic-catface"/></svg>
+      <div class="mine-name">小区长</div>
+      <div class="mine-stats" id="mine-stats"></div>
+    </div>
+    <div class="panel mine-menu">
+      <button type="button" class="menu-row" id="menu-cats"><svg class="ic"><use href="#ic-paw"/></svg>房间与分类管理<svg class="ic arrow"><use href="#ic-wand"/></svg></button>
+      <button type="button" class="menu-row" id="menu-backup"><svg class="ic"><use href="#ic-box"/></svg>数据备份与导出<svg class="ic arrow"><use href="#ic-wand"/></svg></button>
+      <div id="backup-row" class="sub-row hidden">
+        <button type="button" class="btn" id="menu-export-json">导出备份</button>
+        <button type="button" class="btn" id="menu-share">分享备份</button>
+        <button type="button" class="btn" id="menu-import">导入备份</button>
+        <button type="button" class="btn" id="menu-export-csv">导出 CSV</button>
+        <input type="file" id="file-import" accept=".json,application/json" hidden>
+      </div>
+      <button type="button" class="menu-row" id="menu-remind"><svg class="ic"><use href="#ic-bell"/></svg>提醒设置<svg class="ic arrow"><use href="#ic-wand"/></svg></button>
+      <div id="remind-row" class="sub-row hidden">
+        <label class="inline-setting">临期
+          <input type="number" id="warn-days-mine" class="num-input" min="1" max="365" value="7"> 天内算「临期」
+        </label>
+      </div>
+      <button type="button" class="menu-row" id="menu-help"><svg class="ic"><use href="#ic-book"/></svg>使用帮助<svg class="ic arrow"><use href="#ic-wand"/></svg></button>
+      <button type="button" class="menu-row" id="menu-about"><svg class="ic"><use href="#ic-house"/></svg>关于我们<svg class="ic arrow"><use href="#ic-wand"/></svg></button>
+    </div>
+  </section>
+
+  <!-- ⑥ 提醒中心（全屏页） -->
+  <div id="page-remind" class="page hidden">
+    <div class="page-head">
+      <button type="button" class="page-back" id="remind-back">‹ 返回</button>
+      <h1 class="page-title">提醒中心</h1>
+      <span class="page-head-space"></span>
+    </div>
+    <div class="page-body">
+      <div class="tag-scroll" id="remind-chips"></div>
+      <div id="remind-list" class="remind-list"></div>
+    </div>
+  </div>
+
+  <!-- ③ 居民小档案（详情全屏页） -->
+  <div id="page-detail" class="page hidden">
+    <div class="page-head">
+      <button type="button" class="page-back" id="detail-back">‹ 返回</button>
+      <h1 class="page-title">居民小档案</h1>
+      <button type="button" id="pd-card-btn" class="link-btn">生成专属卡片</button>
+    </div>
+    <div class="page-body">
+      <div class="detail-hero">
+        <svg class="detail-icon" aria-hidden="true"><use id="pd-icon" href="#ic-box"/></svg>
+        <div class="detail-info">
+          <div class="detail-name" id="pd-name"></div>
+          <div id="pd-badges"></div>
+          <div class="item-say" id="pd-say"></div>
+        </div>
+      </div>
+      <div id="pd-cards"></div>
+      <div class="detail-ops">
+        <button type="button" class="btn primary" id="pd-stock">盘点增减</button>
+        <button type="button" class="btn" id="pd-edit">编辑信息</button>
+        <button type="button" class="link-btn" id="pd-share-card">生成专属卡片</button>
+      </div>
+      <div id="pd-stepper" class="qty-stepper hidden"></div>
+      <div class="panel">
+        <h2>使用记录时间线</h2>
+        <div id="pd-timeline"></div>
       </div>
     </div>
-    <div id="d-rows" class="detail-rows"></div>
-    <div class="detail-ops">
-      <div class="qty-stepper" id="d-stepper"></div>
-      <button type="button" id="d-edit" class="btn">编辑</button>
-      <button type="button" id="d-del" class="btn danger-btn">送走</button>
+  </div>
+
+  <!-- ④ 新增 / 编辑（全屏表单页） -->
+  <div id="page-form" class="page hidden">
+    <div class="page-head">
+      <button type="button" class="page-back" id="form-back">‹ 返回</button>
+      <h1 class="page-title" id="form-title">添加新物品</h1>
+      <span class="page-head-space"></span>
+    </div>
+    <div class="page-body">
+      <form id="item-form" autocomplete="off">
+        <label class="field"><span>物品名称 *</span>
+          <input name="name" required maxlength="50" placeholder="如：纯牛奶 250ml">
+        </label>
+        <div class="field"><span>分类（点选，也可以自己新建）</span>
+          <div id="cat-select" class="cat-select"></div>
+        </div>
+        <div class="field"><span>物品形象（点选下面的常用形象，或自定义）</span>
+          <div id="preset-chips" class="preset-chips hidden">
+            <div id="preset-chip-list" class="preset-list"></div>
+          </div>
+        </div>
+        <div class="field"><span>存放位置</span>
+          <div id="loc-select" class="cat-select"></div>
+          <input name="location" list="dl-location" maxlength="20" placeholder="或自定义位置，如：冰箱第二层">
+          <datalist id="dl-location"></datalist>
+        </div>
+        <div class="field"><span>数量 *</span>
+          <div class="qty-input-row">
+            <button type="button" class="qty-btn" id="f-minus">−</button>
+            <input name="quantity" id="f-qty" type="number" min="0" step="any" value="1" required>
+            <button type="button" class="qty-btn" id="f-plus">＋</button>
+          </div>
+        </div>
+        <label class="field"><span>单位</span>
+          <input name="unit" maxlength="10" value="个" placeholder="个 / 盒 / 瓶…">
+        </label>
+        <label class="field"><span>单价（用于统计花费）</span>
+          <input name="price" type="number" min="0" step="any" value="" placeholder="选填，如 12.5">
+        </label>
+        <label class="field"><span>购入日期</span>
+          <input name="purchaseDate" type="date">
+        </label>
+        <label class="field"><span>保质期至</span>
+          <input name="expiryDate" type="date">
+        </label>
+        <div class="field"><span>使用状态</span>
+          <div class="cat-select" id="usage-select"></div>
+        </div>
+        <div class="field toggle-field"><span>过期提醒</span>
+          <button type="button" id="f-remind" class="toggle on" role="switch" aria-checked="true"><i></i></button>
+        </div>
+        <label class="field"><span>最低库存提醒</span>
+          <input name="minStock" type="number" min="0" step="any" value="0" placeholder="0 = 不提醒">
+        </label>
+        <label class="field"><span>备注</span>
+          <textarea name="note" rows="2" maxlength="200" placeholder="品牌、规格、放在第几层…"></textarea>
+        </label>
+        <p class="form-hint">保存后物品将入住你的家园 🏡</p>
+        <button type="submit" class="btn primary save-bar">保存入库</button>
+      </form>
+    </div>
+  </div>
+
+</main>
+
+<!-- 类目管理弹窗 -->
+<div id="cat-overlay" class="modal-overlay hidden">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cat-title">
+    <div class="modal-head">
+      <h2 id="cat-title">🏷 房间与类目管理</h2>
+      <button type="button" id="cat-close" class="icon-btn" title="关闭">✕</button>
+    </div>
+    <p class="cat-tip">点上排小图标选形象 → 起个名字 → 添加类目。<br>点下面的类目徽章可以改形象、改名或删除。</p>
+    <div id="cat-emoji-picker" class="emoji-picker"></div>
+    <div class="cat-add-row">
+      <input id="cat-new-name" class="cat-name-input" maxlength="20" placeholder="类目名称，如：美妆 / 宠物 / 小猫">
+      <button type="button" id="cat-add-btn" class="btn primary">添加类目</button>
+      <button type="button" id="cat-del-btn" class="btn danger-btn hidden">删除</button>
+      <button type="button" id="cat-cancel-edit" class="btn hidden">取消编辑</button>
+    </div>
+    <div id="cat-list" class="cat-list"></div>
+    <div class="modal-foot">
+      <button type="button" id="cat-done" class="btn primary">完成</button>
     </div>
   </div>
 </div>
 
-<button id="fab" class="fab hidden" title="添加物品">＋</button>
+<!-- 使用帮助 / 关于 弹窗 -->
+<div id="help-overlay" class="modal-overlay hidden">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head"><h2>使用帮助</h2><button type="button" id="help-close" class="icon-btn">✕</button></div>
+    <div class="help-body">
+      <p><b>家园</b>：五个房间就是物品的家，点房间可以看那一屋的居民。</p>
+      <p><b>图鉴</b>：遇见过的居民都会点亮；灰色的剪影是还没遇见的，点它就能去领养。</p>
+      <p><b>悄悄话</b>：临期和过期的居民会主动跟你说话，点气泡直达。</p>
+      <p><b>盘点</b>：数量有变化随时 +/−，一键盘点帮你在忙碌的日子也点名全员。</p>
+      <p><b>备份</b>：数据只存在你的设备里，记得每周导出一份备份哦。</p>
+    </div>
+    <div class="modal-foot"><button type="button" id="help-done" class="btn primary">知道啦</button></div>
+  </div>
+</div>
+
+<div id="about-overlay" class="modal-overlay hidden">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head"><h2>关于我们</h2><button type="button" id="about-close" class="icon-btn">✕</button></div>
+    <div class="help-body">
+      <p>物品收纳管家 v12 🐱</p>
+      <p>一个装在手心里的家庭小仓库：图鉴收集 + 家园养成，让收纳变成治愈日常。</p>
+      <p>界面风格参考 animal-island-ui 与 crayon-vignette 手绘规范。</p>
+      <p>数据仅保存在你自己的设备浏览器里，不会上传到任何服务器。</p>
+    </div>
+    <div class="modal-foot"><button type="button" id="about-done" class="btn primary">喵～</button></div>
+  </div>
+</div>
+
+<div id="toast" class="toast off"></div>
+
+<footer class="app-footer">界面风格参考 <a href="https://github.com/guokaigdg/animal-island-ui" target="_blank" rel="noopener">animal-island-ui</a> 与 crayon-vignette 手绘规范 · 数据仅保存在你的设备里，记得偶尔「导出备份」哦</footer>
 
 <!-- 底部导航栏（手绘风） -->
 <nav class="bottom-nav">
@@ -225,81 +398,10 @@
   <button class="nav-item" data-tab="calendar">
     <svg class="ic" aria-hidden="true"><use href="#ic-calendar"/></svg><span>日历</span>
   </button>
+  <button class="nav-item" data-tab="mine">
+    <svg class="ic" aria-hidden="true"><use href="#ic-catface"/></svg><span>我的</span>
+  </button>
 </nav>
-
-<div id="modal-overlay" class="modal-overlay hidden">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <div class="modal-head">
-      <h2 id="modal-title">添加物品</h2>
-      <button type="button" id="modal-close" class="icon-btn" title="关闭">✕</button>
-    </div>
-    <form id="item-form" autocomplete="off">
-      <div class="form-grid">
-        <label class="field span2"><span>名称 *</span>
-          <input name="name" required maxlength="50" placeholder="如：纯牛奶 250ml">
-        </label>
-        <div class="field span2"><span>类目（点选，也可以自己新建）</span>
-          <div id="cat-select" class="cat-select"></div>
-          <div id="preset-chips" class="preset-chips hidden">
-            <span class="preset-title">✨ 常用：</span>
-            <div id="preset-chip-list" class="preset-list"></div>
-          </div>
-        </div>
-        <label class="field"><span>存放位置</span>
-          <input name="location" list="dl-location" maxlength="20" placeholder="冰箱 / 厨房柜 / 储物间…">
-          <datalist id="dl-location"></datalist>
-        </label>
-        <label class="field"><span>数量 *</span>
-          <input name="quantity" type="number" min="0" step="any" value="1" required>
-        </label>
-        <label class="field"><span>单位</span>
-          <input name="unit" maxlength="10" value="个" placeholder="个 / 盒 / 瓶…">
-        </label>
-        <label class="field"><span>购买日期</span>
-          <input name="purchaseDate" type="date">
-        </label>
-        <label class="field"><span>保质期至</span>
-          <input name="expiryDate" type="date">
-        </label>
-        <label class="field"><span>最低库存提醒</span>
-          <input name="minStock" type="number" min="0" step="any" value="0" placeholder="0 = 不提醒">
-        </label>
-        <label class="field span2"><span>备注</span>
-          <textarea name="note" rows="2" maxlength="200" placeholder="品牌、规格、放在第几层…"></textarea>
-        </label>
-      </div>
-      <div class="modal-foot">
-        <button type="button" id="btn-cancel" class="btn">取消</button>
-        <button type="submit" class="btn primary">保存</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<div id="cat-overlay" class="modal-overlay hidden">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cat-title">
-    <div class="modal-head">
-      <h2 id="cat-title">🏷 类目管理</h2>
-      <button type="button" id="cat-close" class="icon-btn" title="关闭">✕</button>
-    </div>
-    <p class="cat-tip">点上排表情选图标 → 起个名字 → 添加类目。<br>点下面的类目徽章可以改图标、改名或删除。</p>
-    <div id="cat-emoji-picker" class="emoji-picker"></div>
-    <div class="cat-add-row">
-      <input id="cat-new-name" class="cat-name-input" maxlength="20" placeholder="类目名称，如：美妆 / 宠物 / 小猫">
-      <button type="button" id="cat-add-btn" class="btn primary">添加类目</button>
-      <button type="button" id="cat-del-btn" class="btn danger-btn hidden">删除</button>
-      <button type="button" id="cat-cancel-edit" class="btn hidden">取消编辑</button>
-    </div>
-    <div id="cat-list" class="cat-list"></div>
-    <div class="modal-foot">
-      <button type="button" id="cat-done" class="btn primary">完成</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast" class="toast off"></div>
-
-<footer class="app-footer">界面风格参考 <a href="https://github.com/guokaigdg/animal-island-ui" target="_blank" rel="noopener">animal-island-ui</a> 与 crayon-vignette 手绘规范 · 数据仅保存在你的浏览器里，记得偶尔「导出备份」哦</footer>
 
 <script src="app.js"></script>
 <script>
