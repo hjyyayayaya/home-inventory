@@ -105,6 +105,9 @@
         <svg id="home-map" viewBox="0 0 680 430" aria-label="家园地图"></svg>
       </div>
 
+      <!-- 补货红气泡（有待补货物品时出现） -->
+      <button type="button" id="shop-bubble" class="say-bubble shop-bubble hidden"></button>
+
       <!-- 快捷操作 -->
       <div class="quick-actions">
         <button type="button" class="btn primary big" id="btn-quick-add">＋ 快速添加物品</button>
@@ -189,6 +192,8 @@
       <h2 id="cal-day-title"></h2>
       <div id="cal-day-list"></div>
     </div>
+
+    <button type="button" class="btn big report-entry" id="btn-report">📊 查看消费与闲置分析</button>
   </section>
 
   <!-- ⑦ 我的 -->
@@ -204,6 +209,8 @@
     </div>
     <div class="panel mine-menu">
       <button type="button" class="menu-row" id="menu-cats"><svg class="ic"><use href="#ic-paw"/></svg>房间与分类管理<svg class="ic arrow"><use href="#ic-wand"/></svg></button>
+      <button type="button" class="menu-row" id="menu-shop"><svg class="ic"><use href="#ic-box"/></svg>采购清单<svg class="ic arrow"><use href="#ic-wand"/></svg></button>
+      <button type="button" class="menu-row" id="menu-report"><svg class="ic"><use href="#ic-calendar"/></svg>消费与闲置分析<svg class="ic arrow"><use href="#ic-wand"/></svg></button>
       <button type="button" class="menu-row" id="menu-backup"><svg class="ic"><use href="#ic-box"/></svg>数据备份与导出<svg class="ic arrow"><use href="#ic-wand"/></svg></button>
       <div id="backup-row" class="sub-row hidden">
         <button type="button" class="btn" id="menu-export-json">导出备份</button>
@@ -310,21 +317,74 @@
         <label class="field"><span>保质期至</span>
           <input name="expiryDate" type="date">
         </label>
-        <div class="field"><span>使用状态</span>
-          <div class="cat-select" id="usage-select"></div>
-        </div>
         <div class="field toggle-field"><span>过期提醒</span>
           <button type="button" id="f-remind" class="toggle on" role="switch" aria-checked="true"><i></i></button>
         </div>
-        <label class="field"><span>最低库存提醒</span>
-          <input name="minStock" type="number" min="0" step="any" value="0" placeholder="0 = 不提醒">
+        <label class="field"><span>开封日期（选填，护肤品/食品用）</span>
+          <input name="openedDate" type="date">
         </label>
+        <label class="field"><span>开封后可用（天，如 180）</span>
+          <input name="openLifeDays" type="number" min="0" step="1" value="" placeholder="选填">
+        </label>
+        <label class="field"><span>保养 / 维保周期（天，选填）</span>
+          <input name="maintainCycleDays" type="number" min="0" step="1" value="" placeholder="如 365">
+        </label>
+        <label class="field"><span>上次维护日期（选填）</span>
+          <input name="lastMaintainDate" type="date">
+        </label>
+        <div class="field"><span>使用状态</span>
+          <div class="cat-select" id="usage-select"></div>
+        </div>
+        <div class="field span-full"><span>自定义标签（如：旅行装备 / 露营用品）</span>
+          <div class="tag-input-row">
+            <input id="f-tag-input" class="cat-name-input" maxlength="12" placeholder="输入标签">
+            <button type="button" id="f-tag-add" class="btn">＋</button>
+          </div>
+          <div id="f-tag-list" class="cat-select"></div>
+        </div>
+        <div class="field span-full"><span>最低库存阈值（低于它就自动进采购清单）</span>
+          <div class="slider-row">
+            <input id="f-minstock" name="minStock" type="range" min="0" max="20" step="1" value="0">
+            <span class="slider-val"><b id="f-minstock-val">0</b> 件</span>
+          </div>
+          <div class="slider-ticks"><span>0</span><span>5</span><span>10</span><span>15</span><span>20</span></div>
+        </div>
         <label class="field"><span>备注</span>
           <textarea name="note" rows="2" maxlength="200" placeholder="品牌、规格、放在第几层…"></textarea>
         </label>
         <p class="form-hint">保存后物品将入住你的家园 🏡</p>
         <button type="submit" class="btn primary save-bar">保存入库</button>
       </form>
+    </div>
+  </div>
+
+  <!-- 采购小票（全屏页） -->
+  <div id="page-shop" class="page hidden">
+    <div class="page-head">
+      <button type="button" class="page-back" id="shop-back">‹ 返回</button>
+      <h1 class="page-title">采购小票</h1>
+      <button type="button" id="shop-share" class="link-btn">分享给家人</button>
+    </div>
+    <div class="page-body">
+      <div class="receipt" id="shop-receipt"></div>
+      <div class="shop-add-row">
+        <input id="shop-add-name" class="cat-name-input" maxlength="20" placeholder="手动加一项要买的…">
+        <button type="button" id="shop-add-btn" class="btn primary">＋</button>
+      </div>
+      <p class="cal-legend">勾选「已购买」会自动入库并从清单划掉；手动项勾选即完成。</p>
+    </div>
+  </div>
+
+  <!-- 消费与闲置分析（全屏页） -->
+  <div id="page-report" class="page hidden">
+    <div class="page-head">
+      <button type="button" class="page-back" id="report-back">‹ 返回</button>
+      <h1 class="page-title">消费与闲置分析</h1>
+      <span class="page-head-space"></span>
+    </div>
+    <div class="page-body">
+      <div class="tag-scroll" id="report-range"></div>
+      <div id="report-body"></div>
     </div>
   </div>
 
