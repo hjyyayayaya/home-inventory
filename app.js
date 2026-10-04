@@ -37,6 +37,7 @@ const state = {
   editingId: null, // 正在编辑的物品 id；null 表示新增
   formCategory: '', // 弹窗表单当前选中的类目
   formIcon: '', // 弹窗表单当前选中的物品图标
+  detailId: null, // 详情页当前展示的物品 id
 };
 
 /* ---------------- 工具函数 ---------------- */
@@ -209,7 +210,8 @@ function renderAll() {
   renderCharts();
   renderDatalists();
   renderFilterOptions();
-  renderList();
+  renderBook();
+  renderCalendar();
 }
 
 /* ---------------- 小区村景插画 ---------------- */
@@ -423,55 +425,154 @@ function filteredItems() {
   return arr.sort(sorters[f.sort] || sorters.expiry);
 }
 
-function itemCardHtml(it) {
-  const info = expiryInfo(it);
-  const low = isLowStock(it);
-  const meta = [];
-  if (it.category) meta.push(`<span class="chip">${iconHtml(catIcon(it.category))} ${escapeHtml(it.category)}</span>`);
-  if (it.location) meta.push(`<span class="chip">${escapeHtml(it.location)}</span>`);
-  if (it.expiryDate) meta.push(`<span class="chip">保质期至 ${escapeHtml(it.expiryDate)}</span>`);
-  if (it.purchaseDate) meta.push(`<span class="chip">购于 ${escapeHtml(it.purchaseDate)}</span>`);
-  return `<div class="item-card">
-    <div class="item-main">
-      <div class="item-name-row">
-        ${iconHtml(it.icon || catIcon(it.category), 'item-ic')}
-        <span class="item-name">${escapeHtml(it.name)}</span>
-        <span class="badge ${info.code}">${info.label}</span>
-        ${low ? '<span class="badge low">库存不足</span>' : ''}
-      </div>
-      ${meta.length ? `<div class="item-meta">${meta.join('')}</div>` : ''}
-      ${(['expired', 'soon'].includes(info.code) || low) ? `<div class="item-say">“${escapeHtml(personify(it))}”</div>` : ''}
-      ${it.note ? `<div class="item-note">${escapeHtml(it.note)}</div>` : ''}
-    </div>
-    <div class="item-side">
-      <div class="qty-stepper">
-        <button class="qty-btn" data-action="dec" data-id="${it.id}" title="减少 1">−</button>
-        <span class="qty-val">${fmtNum(it.quantity)} <small>${escapeHtml(it.unit)}</small></span>
-        <button class="qty-btn" data-action="inc" data-id="${it.id}" title="增加 1">＋</button>
-      </div>
-      <div class="item-ops">
-        <button class="link-btn" data-action="edit" data-id="${it.id}">编辑</button>
-        <button class="link-btn danger" data-action="del" data-id="${it.id}">删除</button>
-      </div>
-    </div>
-  </div>`;
+/* ---------------- 图鉴 / 日历 / 详情 的渲染在下方 ---------------- */
+
+/* ---------------- 居民图鉴 ---------------- */
+
+function renderBook() {
+  const grid = $('#book-grid');
+  if (!grid) return;
+  const owned = filteredItems();
+  const ownedHtml = owned.map((it) => {
+    const info = expiryInfo(it);
+    return `<button type="button" class="book-card owned" data-id="${it.id}" title="点击看小档案">
+      ${iconHtml(it.icon || catIcon(it.category), 'book-ic')}
+      <span class="book-name">${escapeHtml(it.name)}</span>
+      <span class="badge ${info.code}">${info.label}</span>
+      <span class="book-qty">×${fmtNum(it.quantity)} ${escapeHtml(it.unit)}</span>
+    </button>`;
+  }).join('');
+
+  // 未遇见：各预设类目的常用物品中还没录入的
+  const ownedNames = new Set(state.items.map((i) => i.name));
+  const missing = [];
+  for (const c of state.categories) {
+    for (const [n, i] of (c.presets || [])) {
+      if (!ownedNames.has(n)) missing.push({ name: n, icon: i });
+    }
+  }
+  const missingHtml = missing.map((m) => `
+    <div class="book-card silhouette">
+      ${iconHtml(m.icon, 'book-ic')}
+      <span class="book-name">${escapeHtml(m.name)}</span>
+      <span class="book-qty">还没遇见</span>
+    </div>`).join('');
+
+  grid.innerHTML =
+    (owned.length ? `<div class="book-section">已遇见 ${owned.length} 位居民</div>` : '') + ownedHtml +
+    (missing.length ? `<div class="book-section">还没遇见 ${missing.length} 位，等你把它们领回家</div>` + missingHtml : '');
+
+  $('#item-count').textContent = `已收录 ${owned.length} 位居民`;
+  const emptyEl = $('#list-empty');
+  if (!owned.length && !missing.length) {
+    emptyEl.classList.remove('hidden');
+    $('#list-empty-text').textContent = '图鉴还是空的，先去家园领一位居民吧';
+  } else {
+    emptyEl.classList.add('hidden');
+  }
 }
 
-function renderList() {
-  const arr = filteredItems();
-  $('#item-count').textContent = `共 ${arr.length} 件`;
-  const listEl = $('#item-list');
-  const emptyEl = $('#list-empty');
-  if (!arr.length) {
-    emptyEl.classList.remove('hidden');
-    $('#list-empty-text').textContent = state.items.length
-      ? '这些居民躲起来了，换个搜索词或筛选条件找找'
-      : '小区还空着，点击右下角的 ＋ 领第一位居民进来';
-    listEl.innerHTML = '';
-    return;
+/* ---------------- 物品记录日历 ---------------- */
+
+let calY, calM; // 当前查看的年 / 月（0 起）
+
+function renderCalendar() {
+  const grid = $('#cal-grid');
+  if (!grid) return;
+  if (calY === undefined) {
+    const n = new Date();
+    calY = n.getFullYear();
+    calM = n.getMonth();
   }
-  emptyEl.classList.add('hidden');
-  listEl.innerHTML = arr.map(itemCardHtml).join('');
+  $('#cal-month').textContent = `${calY}年${calM + 1}月`;
+  const startDow = new Date(calY, calM, 1).getDay();
+  const days = new Date(calY, calM + 1, 0).getDate();
+  const sameMonth = (ds) => ds && +ds.slice(0, 4) === calY && +ds.slice(5, 7) === calM + 1;
+
+  const ev = {};
+  const add = (d, it, type) => { (ev[d] = ev[d] || []).push({ it, type }); };
+  for (const it of state.items) {
+    if (sameMonth(it.purchaseDate)) add(+it.purchaseDate.slice(8, 10), it, 'buy');
+    const c = (it.createdAt || '').slice(0, 10);
+    if (sameMonth(c)) add(+c.slice(8, 10), it, 'join');
+    if (sameMonth(it.expiryDate)) add(+it.expiryDate.slice(8, 10), it, 'expire');
+  }
+
+  const today = toYMD(new Date());
+  let html = '';
+  for (let i = 0; i < startDow; i++) html += '<div class="cal-cell blank"></div>';
+  for (let d = 1; d <= days; d++) {
+    const list = ev[d] || [];
+    const marks = list.slice(0, 3).map(({ it, type }) => {
+      if (type === 'expire') return '<span class="mark">⏰</span>';
+      if (type === 'join') return '<span class="mark">🏡</span>';
+      const ic = /^([a-z][a-z0-9-]*)$/.test(it.icon || catIcon(it.category)) ? (it.icon || catIcon(it.category)) : 'box';
+      return `<svg class="ic mark-ic" aria-hidden="true"><use href="#ic-${ic}"/></svg>`;
+    }).join('');
+    html += `<button type="button" class="cal-cell${list.length ? ' has' : ''}${toYMD(new Date(calY, calM, d)) === today ? ' today' : ''}" data-day="${d}">
+      <span class="cal-d">${d}</span><span class="cal-marks">${marks}</span></button>`;
+  }
+  grid.innerHTML = html;
+}
+
+function showCalDay(d) {
+  const ds = `${calY}-${pad2(calM + 1)}-${pad2(d)}`;
+  const list = [];
+  for (const it of state.items) {
+    if (it.purchaseDate === ds) list.push({ it, tag: '这一天购入' });
+    if ((it.createdAt || '').slice(0, 10) === ds) list.push({ it, tag: '这一天搬进小区' });
+    if (it.expiryDate === ds) list.push({ it, tag: '这一天到期' });
+  }
+  $('#cal-day-panel').classList.remove('hidden');
+  $('#cal-day-title').textContent = `${calM + 1}月${d}日 · ${list.length} 条记录`;
+  $('#cal-day-list').innerHTML = list.length
+    ? list.map(({ it, tag }) => `
+      <button type="button" class="cal-day-row" data-id="${it.id}">
+        ${iconHtml(it.icon || catIcon(it.category))} <b>${escapeHtml(it.name)}</b>
+        <span class="chip">${tag}</span>
+      </button>`).join('')
+    : '<div class="chart-empty">这一天没有记录</div>';
+  $('#cal-day-list').scrollTop = 0;
+}
+
+function hideCalDay() {
+  $('#cal-day-panel').classList.add('hidden');
+}
+
+/* ---------------- 居民小档案（详情卡片） ---------------- */
+
+function openDetail(id) {
+  const it = state.items.find((i) => i.id === id);
+  if (!it) return;
+  state.detailId = id;
+  const info = expiryInfo(it);
+  const iconId = /^([a-z][a-z0-9-]*)$/.test(it.icon || catIcon(it.category)) ? (it.icon || catIcon(it.category)) : 'box';
+  $('#detail-icon-use').setAttribute('href', `#ic-${iconId}`);
+  $('#d-name').textContent = it.name;
+  $('#d-badges').innerHTML =
+    `<span class="badge ${info.code}">${info.label}</span>` +
+    (isLowStock(it) ? '<span class="badge low">库存不足</span>' : '') +
+    (it.category ? `<span class="chip">${iconHtml(catIcon(it.category))} ${escapeHtml(it.category)}</span>` : '');
+  $('#d-say').textContent = `“${personify(it)}”`;
+  const row = (k, v) => (v ? `<div class="d-row"><span>${k}</span><b>${v}</b></div>` : '');
+  $('#d-rows').innerHTML =
+    row('数量', `${fmtNum(it.quantity)} ${escapeHtml(it.unit)}`) +
+    row('存放位置', escapeHtml(it.location)) +
+    row('购入时间', it.purchaseDate) +
+    row('保质期至', it.expiryDate) +
+    row('最低库存提醒', it.minStock > 0 ? `少于 ${fmtNum(it.minStock)} 时提醒` : '') +
+    row('备注', escapeHtml(it.note));
+  $('#d-stepper').innerHTML = `
+    <button type="button" class="qty-btn" data-d="-1" title="减少 1">−</button>
+    <span class="qty-val">${fmtNum(it.quantity)} <small>${escapeHtml(it.unit)}</small></span>
+    <button type="button" class="qty-btn" data-d="1" title="增加 1">＋</button>`;
+  $('#detail-overlay').classList.remove('hidden');
+}
+
+function closeDetail() {
+  $('#detail-overlay').classList.add('hidden');
+  state.detailId = null;
+  renderAll();
 }
 
 /* ---------------- 增删改 ---------------- */
@@ -896,14 +997,18 @@ function toast(msg) {
 }
 
 function switchTab(name) {
-  $$('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
+  $$('.nav-item').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   $$('.tab-panel').forEach((p) => p.classList.toggle('active', p.id === `tab-${name}`));
+  if (name === 'book') renderBook();
+  if (name === 'calendar') renderCalendar();
 }
 
 /* ---------------- 事件绑定与启动 ---------------- */
 
 function bindEvents() {
-  $$('.tab').forEach((t) => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+  // 底部导航
+  $$('.nav-item').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+  $('#nav-add').addEventListener('click', () => openModal(null));
 
   // 概览：贴纸统计点击 → 跳到居民列表并按状态筛选
   $('#sticker-row').addEventListener('click', (e) => {
@@ -911,18 +1016,18 @@ function bindEvents() {
     if (!st) return;
     state.filters.status = st.dataset.status;
     $('#filter-status').value = state.filters.status;
-    switchTab('items');
-    renderList();
+    switchTab('book');
+    renderBook();
   });
 
-  // 概览：提醒区点击 → 去列表里搜该物品
+  // 概览：提醒区点击 → 去图鉴里找该居民
   $('#alerts-list').addEventListener('click', (e) => {
     const row = e.target.closest('[data-action="locate"]');
     if (!row) return;
     state.filters.q = row.dataset.name || '';
     $('#search').value = state.filters.q;
-    switchTab('items');
-    renderList();
+    switchTab('book');
+    renderBook();
   });
 
   // 临期提醒天数设置
@@ -934,23 +1039,50 @@ function bindEvents() {
     renderAll();
   });
 
-  // 列表：数量增减 / 编辑 / 删除（事件委托）
-  $('#item-list').addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-action]');
-    if (!btn) return;
-    const { action, id } = btn.dataset;
-    if (action === 'inc') adjustQty(id, 1);
-    else if (action === 'dec') adjustQty(id, -1);
-    else if (action === 'edit') openModal(state.items.find((i) => i.id === id));
-    else if (action === 'del') deleteItem(id);
+  // 列表：数量增减 / 编辑 / 删除（事件委托）——已由图鉴与详情页接管，保留兼容
+  // 图鉴：点已拥有的卡片 → 打开居民小档案
+  $('#book-grid').addEventListener('click', (e) => {
+    const c = e.target.closest('.book-card.owned');
+    if (c) openDetail(c.dataset.id);
+  });
+
+  // 详情页：关闭 / 编辑 / 送走 / 数量步进
+  $('#detail-close').addEventListener('click', closeDetail);
+  $('#detail-overlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeDetail(); });
+  $('#d-edit').addEventListener('click', () => {
+    const it = state.items.find((i) => i.id === state.detailId);
+    if (!it) return;
+    closeDetail();
+    openModal(it);
+  });
+  $('#d-del').addEventListener('click', () => {
+    const id = state.detailId;
+    if (!id) return;
+    closeDetail();
+    deleteItem(id);
+  });
+  $('#d-stepper').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-d]');
+    if (!b || !state.detailId) return;
+    adjustQty(state.detailId, +b.dataset.d);
+    openDetail(state.detailId); // 刷新详情数字
+  });
+
+  // 日历：翻月 + 点日期看当天记录
+  $('#cal-prev').addEventListener('click', () => { calM--; if (calM < 0) { calM = 11; calY--; } hideCalDay(); renderCalendar(); });
+  $('#cal-next').addEventListener('click', () => { calM++; if (calM > 11) { calM = 0; calY++; } hideCalDay(); renderCalendar(); });
+  $('#cal-grid').addEventListener('click', (e) => {
+    const cell = e.target.closest('.cal-cell[data-day]');
+    if (!cell) return;
+    showCalDay(+cell.dataset.day);
   });
 
   // 搜索 / 筛选 / 排序
-  $('#search').addEventListener('input', (e) => { state.filters.q = e.target.value; renderList(); });
-  $('#filter-status').addEventListener('change', (e) => { state.filters.status = e.target.value; renderList(); });
-  $('#filter-category').addEventListener('change', (e) => { state.filters.category = e.target.value; renderList(); });
-  $('#filter-location').addEventListener('change', (e) => { state.filters.location = e.target.value; renderList(); });
-  $('#sort').addEventListener('change', (e) => { state.filters.sort = e.target.value; renderList(); });
+  $('#search').addEventListener('input', (e) => { state.filters.q = e.target.value; renderBook(); });
+  $('#filter-status').addEventListener('change', (e) => { state.filters.status = e.target.value; renderBook(); });
+  $('#filter-category').addEventListener('change', (e) => { state.filters.category = e.target.value; renderBook(); });
+  $('#filter-location').addEventListener('change', (e) => { state.filters.location = e.target.value; renderBook(); });
+  $('#sort').addEventListener('change', (e) => { state.filters.sort = e.target.value; renderBook(); });
 
   // 添加 / 编辑弹窗
   $('#fab').addEventListener('click', () => openModal(null));
@@ -960,7 +1092,14 @@ function bindEvents() {
   $('#btn-cancel').addEventListener('click', closeModal);
   $('#modal-overlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeModal(); });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !$('#modal-overlay').classList.contains('hidden')) closeModal();
+    if (e.key !== 'Escape') return;
+    if (!$('#modal-overlay').classList.contains('hidden')) closeModal();
+    if (!$('#detail-overlay').classList.contains('hidden')) closeDetail();
+    if (!$('#cat-overlay').classList.contains('hidden')) closeCatManager();
+  });
+  $('#cal-day-list').addEventListener('click', (e) => {
+    const row = e.target.closest('.cal-day-row[data-id]');
+    if (row) { hideCalDay(); openDetail(row.dataset.id); }
   });
   $('#item-form').addEventListener('submit', submitForm);
 
