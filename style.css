@@ -209,27 +209,63 @@ h1, h2, h3 { margin: 0; font-family: var(--font-cute); font-weight: 400; letter-
   color: var(--ink-disabled); font-weight: 400;
 }
 
-/* ---------- 概览 ---------- */
-.stats-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px;
+/* ---------- 手账页头 ---------- */
+.diary-head { position: relative; text-align: center; padding: 26px 0 4px; }
+.diary-title {
+  font-size: 40px; color: var(--ink-1); letter-spacing: .06em;
+  display: inline-block; position: relative;
 }
-.stat-card {
-  background: var(--bg-panel);
-  border: 2px solid var(--ink-1);
-  border-radius: 24px 20px 26px 22px / 22px 26px 20px 24px;
-  padding: 18px 14px; text-align: center; color: var(--ink-1);
-  transition: all .25s var(--ease);
+.diary-title::after {
+  content: ''; position: absolute; left: 8%; right: 8%; bottom: 2px; height: 5px;
+  background: var(--coral); border-radius: 999px; transform: rotate(-1.6deg); opacity: .85;
 }
-.stat-card[role="button"]:hover { transform: translateY(-3px) rotate(-1deg); }
-.stat-card[role="button"]:active { transform: translateY(1px); }
-.stat-num { font-family: var(--font-cute); font-size: 36px; font-weight: 400; line-height: 1.2; }
-.stat-label { font-size: 13px; font-weight: 700; color: var(--ink-2); margin-top: 2px; }
-/* 粉彩角色制：每种色块有专属职责 */
-.stat-card.total { background: var(--butter); }
-.stat-card.warn  { background: var(--peach); }
-.stat-card.danger { background: #F6AFA3; }
-.stat-card.info  { background: var(--sky); }
+.diary-sub { margin: 10px 0 0; font-size: 13.5px; color: var(--ink-3); font-weight: 600; }
+.doodle-cloud { position: absolute; left: calc(50% - 300px); top: 8px; width: 64px; transform: rotate(-8deg); }
+.doodle-star { position: absolute; right: calc(50% - 280px); top: 30px; width: 26px; transform: rotate(14deg); }
+@media (max-width: 720px) {
+  .doodle-cloud { left: 6px; }
+  .doodle-star { right: 6px; }
+  .diary-title { font-size: 32px; }
+}
 
+/* ---------- 小区村景插画 ---------- */
+.diary-scene-wrap {
+  background: var(--sky);
+  background: linear-gradient(180deg, #EAF4F9 0%, #FBF7EF 78%);
+  border: 2px solid var(--ink-1);
+  border-radius: 28px 24px 30px 26px / 26px 30px 24px 28px;
+  padding: 6px 6px 0;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+#diary-scene { display: block; width: 100%; height: auto; }
+
+/* ---------- 贴纸式统计 ---------- */
+.sticker-row {
+  display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.sticker {
+  --rot: 0deg;
+  font-family: var(--font-cute);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 96px; height: 96px; border-radius: 50%;
+  border: 2.5px solid var(--ink-1);
+  transform: rotate(var(--rot));
+  cursor: default;
+  transition: transform .2s var(--ease);
+  padding: 0;
+}
+.sticker.clickable { cursor: pointer; }
+.sticker.clickable:hover { transform: rotate(var(--rot)) translateY(-3px) scale(1.05); }
+.sticker.butter { background: var(--butter); }
+.sticker.peach { background: var(--peach); }
+.sticker.coral { background: #F6AFA3; }
+.sticker.sky { background: var(--sky); }
+.sticker-num { font-size: 30px; color: var(--ink-1); line-height: 1.1; }
+.sticker-label { font-size: 12.5px; color: var(--ink-2); font-weight: 700; }
+
+/* ---------- 小区（概览）旧样式清理 ---------- */
 .panel {
   position: relative; overflow: hidden;
   background: var(--bg-panel);
@@ -484,8 +520,7 @@ h1, h2, h3 { margin: 0; font-family: var(--font-cute); font-weight: 400; letter-
 
 /* ---------- 响应式 ---------- */
 @media (max-width: 720px) {
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
-  .panel-row { grid-template-columns: 1fr; }
+    .panel-row { grid-template-columns: 1fr; }
   .item-card { flex-direction: column; }
   .item-side { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
   .count { margin-left: 0; width: 100%; }
