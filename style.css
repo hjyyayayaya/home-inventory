@@ -567,6 +567,86 @@ h1, h2, h3 { margin: 0; font-family: var(--font-cute); font-weight: 400; letter-
 /* ---------- 响应式 ---------- */
 
 /* ============================================================
+ * v20：补货清单 / 三级效期 / 分析账单 / 自定义标签
+ * ============================================================ */
+
+.span-full { grid-column: 1 / -1; }
+.badge.urgent { background: #F5A25D; }
+.badge.often-b { background: var(--mint); }
+.badge.idle-b { background: var(--butter); }
+.book-tags { font-size: 12px; color: var(--ink-3); font-weight: 600; }
+.tag-input-row { display: flex; gap: 8px; align-items: center; }
+#f-tag-list { margin-top: 6px; }
+#f-tag-list .chip { font-size: 13px; padding: 3px 10px; }
+.tag-x { border: none; background: none; color: var(--ink-3); cursor: pointer; font-size: 12px; padding: 0; }
+
+/* 阈值滑动手绘刻度 */
+.slider-row { display: flex; align-items: center; gap: 12px; }
+.slider-row input[type="range"] {
+  flex: 1; appearance: none; -webkit-appearance: none; height: 10px;
+  background: repeating-linear-gradient(90deg, var(--bg-sub) 0 8px, #fff 8px 16px);
+  background: var(--bg-sub);
+  border: 2px solid var(--ink-1); border-radius: 999px;
+  cursor: pointer;
+}
+.slider-row input[type="range"]::-webkit-slider-thumb {
+  appearance: none; -webkit-appearance: none;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--primary); border: 2.5px solid var(--ink-1);
+  box-shadow: 0 2px 0 0 var(--ink-1);
+  cursor: grab;
+}
+.slider-val { font-family: var(--font-cute); font-size: 17px; color: var(--ink-1); white-space: nowrap; }
+.slider-ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-4); font-weight: 600; padding: 2px 4px 0; }
+
+/* 首页补货红气泡 */
+.shop-bubble {
+  display: block; width: 100%; margin-bottom: 16px;
+  background: var(--pink); border-color: var(--ink-1);
+  font-size: 14.5px; text-align: left;
+}
+.shop-bubble b { color: var(--coral-deep); }
+
+/* ---------- 采购小票 ---------- */
+.receipt {
+  background: #fff;
+  border: 2px solid var(--ink-1); border-top-width: 2px;
+  border-radius: 4px;
+  padding: 16px 18px;
+  background-image: repeating-linear-gradient(0deg, transparent 0 26px, rgba(37, 33, 31, .035) 26px 27px);
+  margin-bottom: 14px;
+}
+.rc-head {
+  text-align: center; font-family: var(--font-cute); font-size: 18px; color: var(--ink-1);
+  border-bottom: 2px dashed var(--border-light); padding-bottom: 10px; margin-bottom: 8px;
+}
+.rc-sub { text-align: center; font-size: 12px; color: var(--ink-3); font-weight: 600; margin-bottom: 10px; }
+.rc-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px dashed var(--border-light);
+  font-size: 14.5px; cursor: pointer;
+}
+.rc-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
+.rc-row.done .rc-name { text-decoration: line-through; color: var(--ink-4); }
+.rc-name { flex: 1; display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.rc-qty { font-family: var(--font-cute); color: var(--ink-1); font-weight: 700; }
+.rc-empty { color: var(--ink-3); font-size: 13.5px; font-weight: 600; padding: 8px 0; }
+.rc-div { text-align: center; color: var(--ink-3); font-size: 12px; font-weight: 700; padding: 8px 0 2px; }
+.rc-foot { text-align: center; color: var(--ink-4); padding-top: 12px; letter-spacing: 2px; }
+.shop-add-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.shop-add-row .cat-name-input { flex: 1; }
+
+/* ---------- 分析账单 ---------- */
+.report-big { text-align: center; padding: 6px 0 2px; }
+.report-big b { font-family: var(--font-cute); font-size: 46px; color: var(--coral-deep); }
+.report-big span { color: var(--ink-3); font-weight: 700; }
+.report-copy { font-size: 14px; color: var(--ink-2); margin: 6px 0; }
+.report-entry { display: block; width: 100%; margin-top: 8px; }
+.donut-wrap { display: flex; align-items: center; gap: 18px; }
+.donut { width: 110px; height: 110px; flex-shrink: 0; }
+.donut-wrap span { font-size: 13.5px; font-weight: 700; color: var(--ink-2); }
+
+/* ============================================================
  * v12 七页面版新增样式
  * ============================================================ */
 
