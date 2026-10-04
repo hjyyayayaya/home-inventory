@@ -29,15 +29,24 @@ const ICON_CHOICES = [
   'wand', 'bowl', 'petmed', 'petnest', 'headphones', 'tee', 'box',
 ];
 
+// 五大家庭空间（家园地图的区域）
+const ROOMS = ['客厅', '卧室', '厨房', '卫生间', '储物间'];
+
+let viewMode = 'grid'; // 图鉴视图：grid / list
+
 const state = {
   items: [],
   categories: [],
   settings: { warnDays: 7 },
   filters: { q: '', status: 'all', category: 'all', location: 'all', sort: 'expiry' },
   editingId: null, // 正在编辑的物品 id；null 表示新增
-  formCategory: '', // 弹窗表单当前选中的类目
-  formIcon: '', // 弹窗表单当前选中的物品图标
+  formCategory: '', // 表单当前选中的类目
+  formIcon: '', // 表单当前选中的物品图标
+  formRemind: true, // 表单：过期提醒开关
+  formUsage: 'often', // 表单：使用状态
   detailId: null, // 详情页当前展示的物品 id
+  remindFilter: 'all', // 提醒中心筛选
+  roomFilter: '', // 图鉴的房间筛选
 };
 
 /* ---------------- 工具函数 ---------------- */
@@ -109,12 +118,40 @@ function personify(it) {
   return `还剩 ${d} 天，可以慢慢来`;
 }
 
+/** 是否到了该定期盘点的时间（30 天没有记录） */
+function needCheck(it) {
+  const last = it.log && it.log.length ? it.log[0].d : (it.createdAt || '').slice(0, 10);
+  if (!last) return false;
+  return -daysUntil(last) >= 30;
+}
+
+/** 汇总三类提醒：过期 / 补货 / 定期盘点 */
+function buildReminders() {
+  const list = [];
+  for (const it of state.items) {
+    const icon = /^([a-z][a-z0-9-]*)$/.test(it.icon || catIcon(it.category)) ? (it.icon || catIcon(it.category)) : 'box';
+    if (it.remind && it.expiryDate) {
+      const d = daysUntil(it.expiryDate);
+      if (d < 0) list.push({ it, icon, type: 'expired', title: `${it.name} 已过期 ${-d} 天`, sub: `保质期至 ${it.expiryDate}`, date: it.expiryDate, id: it.id });
+      else if (d <= state.settings.warnDays) list.push({ it, icon, type: 'expire', title: `${it.name} 还有 ${d} 天过期`, sub: `保质期至 ${it.expiryDate}`, date: it.expiryDate, id: it.id });
+    }
+    if (isLowStock(it)) list.push({ it, icon, type: 'restock', title: `${it.name} 库存不足`, sub: `只剩 ${fmtNum(it.quantity)} ${it.unit}，最低要备 ${fmtNum(it.minStock)}`, date: (it.updatedAt || '').slice(0, 10), id: it.id });
+    if (it.remind && needCheck(it)) {
+      const last = it.log && it.log.length ? it.log[0].d : (it.createdAt || '').slice(0, 10);
+      list.push({ it, icon, type: 'check', title: `${it.name} 已经 30 天没盘点了`, sub: last ? `上次记录 ${last}` : '入住后还没盘点过', date: last, id: it.id });
+    }
+  }
+  list.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  return list;
+}
+
 function dateOrNull(v) {
   return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
 }
 
 function normalizeItem(raw) {
   const s = (v) => (typeof v === 'string' ? v.trim() : '');
+  const s2 = (v) => (typeof v === 'string' ? v.trim() : '');
   const num = (v) => {
     const n = parseFloat(v);
     return Number.isFinite(n) && n >= 0 ? n : 0;
@@ -130,6 +167,13 @@ function normalizeItem(raw) {
     expiryDate: dateOrNull(raw.expiryDate),
     minStock: num(raw.minStock),
     note: s(raw.note),
+    price: num(raw.price),
+    remind: raw.remind === false ? false : true,
+    usage: raw.usage === 'idle' ? 'idle' : 'often',
+    log: Array.isArray(raw.log)
+      ? raw.log.filter((l) => l && typeof l.d === 'string').slice(0, 60)
+          .map((l) => ({ d: l.d, t: s2(l.t), q: num(l.q) }))
+      : [],
     createdAt: typeof raw.createdAt === 'string' && raw.createdAt ? raw.createdAt : new Date().toISOString(),
     updatedAt: typeof raw.updatedAt === 'string' && raw.updatedAt ? raw.updatedAt : new Date().toISOString(),
   };
@@ -198,6 +242,8 @@ function iconHtml(id, cls) {
   return `<span class="em ${cls || ''}">${escapeHtml(id)}</span>`;
 }
 
+const dRow = (k, v) => (v ? `<div class="d-row"><span>${k}</span><b>${v}</b></div>` : '');
+
 function saveSettings() {
   localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings));
 }
@@ -209,64 +255,113 @@ function renderAll() {
   renderAlerts();
   renderCharts();
   renderDatalists();
-  renderFilterOptions();
+  renderTagChips();
   renderBook();
   renderCalendar();
+  renderMine();
+}
+
+/* ---------------- 我的（个人中心） ---------------- */
+
+function renderMine() {
+  const el = $('#mine-stats');
+  if (!el) return;
+  const dates = new Set();
+  for (const it of state.items) {
+    for (const l of (it.log || [])) if (l.d) dates.add(l.d);
+    const c = (it.createdAt || '').slice(0, 10);
+    if (c) dates.add(c);
+  }
+  el.innerHTML = `
+    <div class="mine-stat"><b>${state.items.length}</b><span>累计收录</span></div>
+    <div class="mine-stat"><b>${dates.size}</b><span>坚持记录天数</span></div>`;
+  const w = $('#warn-days-mine');
+  if (w) w.value = state.settings.warnDays;
+}
+
+/* ---------------- 提醒中心（全屏页） ---------------- */
+
+function openRemindPage() {
+  renderReminders();
+  $('#page-remind').classList.remove('hidden');
+  $('#page-remind').scrollTop = 0;
+}
+
+function closeRemindPage() {
+  $('#page-remind').classList.add('hidden');
+  renderBellBadge();
+}
+
+function renderReminders() {
+  const all = buildReminders();
+  const f = state.remindFilter;
+  const shown = f === 'all' ? all : all.filter((r) => r.type === f);
+  const chipsEl = $('#remind-chips');
+  if (chipsEl) chipsEl.innerHTML = [['all', '全部'], ['expired', '过期提醒'], ['restock', '补货提醒'], ['check', '盘点提醒']].map(([v, l]) => {
+    const n = v === 'all' ? all.length : all.filter((r) => r.type === v).length;
+    return `<button type="button" class="tag-chip${f === v ? ' selected' : ''}" data-remind="${v}">${l} · ${n}</button>`;
+  }).join('');
+  const listEl = $('#remind-list');
+  if (!listEl) return;
+  listEl.innerHTML = shown.length ? shown.map((r) => `
+    <button type="button" class="remind-card ${r.type}" data-id="${r.id}">
+      <span class="remind-avatar">${iconHtml(r.icon)}</span>
+      <span class="remind-main"><b>${escapeHtml(r.title)}</b><small>${escapeHtml(r.sub || '')}</small></span>
+      <span class="remind-arrow">›</span>
+    </button>`).join('') : '<div class="empty"><p>风平浪静，没有需要处理的提醒 🎉</p></div>';
 }
 
 /* ---------------- 小区村景插画 ---------------- */
 
-/** 生成大插画：珊瑚小屋 + 真实物品作为居民站在屋前（临期/过期头顶冒感叹号） */
-function renderScene() {
-  const svg = $('#diary-scene');
+/** 家园地图：五大房间区域 + 真实物品居民 + 装饰（点区域跳图鉴） */
+function renderMap() {
+  const svg = $('#home-map');
   if (!svg) return;
-  const W = 680, GROUND = 252;
   const parts = [];
+  // 小路
+  parts.push('<path d="M-10 330q130 44 250 12t240 32 180-24" fill="none" stroke="#e3ded2" stroke-width="14" stroke-linecap="round" stroke-dasharray="2 22"/>');
+  // 太阳 + 云
+  parts.push('<circle cx="610" cy="60" r="22" fill="#F5EBD8" stroke="#25211F" stroke-width="3"/><path d="M610 28v-8M610 110v-6M646 62h8M566 62h-6" stroke="#25211F" stroke-width="3" stroke-linecap="round"/>');
+  parts.push('<path d="M30 56a9 9 0 0 1 3-16 11 11 0 0 1 21-3 9 9 0 0 1 13 8 6 6 0 0 1-2 11z" fill="#C9E4F5" stroke="#25211F" stroke-width="2.5" stroke-linejoin="round"/>');
+  // 小树
+  const tree = (x, y) => '<g><circle cx="' + x + '" cy="' + y + '" r="15" fill="#C7E8D4" stroke="#25211F" stroke-width="3"/><rect x="' + (x - 3) + '" y="' + (y + 13) + '" width="6" height="12" fill="#cbb89c" stroke="#25211F" stroke-width="2.5"/></g>';
+  parts.push(tree(646, 236), tree(30, 348));
+  // 星星
+  const star = (x, y, sc, c) => { let p = ''; for (let i = 0; i < 8; i++) { const rad = i % 2 ? sc * 0.4 : sc; const a = -Math.PI / 2 + i * Math.PI / 4; p += (x + rad * Math.cos(a)).toFixed(1) + ',' + (y + rad * Math.sin(a)).toFixed(1) + ' '; } return '<polygon points="' + p + '" fill="' + c + '" stroke="#25211F" stroke-width="2.5" stroke-linejoin="round"/>'; };
+  parts.push(star(320, 26, 10, '#FAD2DC'), star(20, 210, 9, '#C9E4F5'), star(660, 392, 10, '#F5EBD8'));
 
-  // 天空装饰：云 ×2、太阳、飞鸟两笔
-  parts.push(`<path d="M84 62a10 10 0 0 1 3-18 12 12 0 0 1 23-3 10 10 0 0 1 15 9 7 7 0 0 1-3 12z" fill="#BFD9EE" stroke="#25211F" stroke-width="3" stroke-linejoin="round"/>`);
-  parts.push(`<path d="M520 44a8 8 0 0 1 2-14 10 10 0 0 1 19-2 8 8 0 0 1 12 7 6 6 0 0 1-2 10z" fill="#DCEEE2" stroke="#25211F" stroke-width="2.5" stroke-linejoin="round"/>`);
-  parts.push(`<circle cx="606" cy="86" r="24" fill="#F7E7A6" stroke="#25211F" stroke-width="3"/><path d="M606 50v-10M606 132v-6M646 86h8M560 86h-8M632 60l7-7M574 112l-6 6M636 110l6 6M578 62l-6-6" stroke="#25211F" stroke-width="3" stroke-linecap="round"/>`);
-  parts.push(`<path d="M330 46q7-8 14 0M356 52q6-7 12 0" fill="none" stroke="#25211F" stroke-width="2.5" stroke-linecap="round"/>`);
-
-  // 地面：手绘波浪线
-  parts.push(`<path d="M20 ${GROUND}q60-8 120 0t120 0 120 0 120 0 120 0 58 0" fill="none" stroke="#25211F" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="80 10 60 12 50"/>`);
-
-  // 草丛 ×3
-  const grass = (x, y, s) => `<path d="M${x} ${y}q-3-${10 * s} -8-${12 * s}M${x} ${y}q0-${13 * s} 0-${15 * s}M${x} ${y}q3-${10 * s} 8-${12 * s}" fill="none" stroke="#8fae8b" stroke-width="${3 * s}" stroke-linecap="round"/>`;
-  parts.push(grass(70, GROUND + 2, 1), grass(636, GROUND + 2, .9), grass(206, GROUND + 2, .7));
-
-  // 珊瑚小屋（居中）
-  const hx = 260, hy = GROUND;
-  parts.push(`<path d="M${hx - 96} ${hy - 78}L${hx} ${hy - 176}l96 98z" fill="#25211F"/>`);
-  parts.push(`<path d="M${hx - 78} ${hy - 82}L${hx} ${hy - 158}l78 76z" fill="#F2695C"/>`);
-  parts.push(`<g><path d="M${hx + 46} ${hy - 150}h26v-0" stroke="#25211F" stroke-width="3"/><rect x="${hx + 48}" y="${hy - 186}" width="22" height="38" fill="#FEFBF4" stroke="#25211F" stroke-width="3"/><path d="M${hx + 52} ${hy - 156}q3-6 6 0t6-2" fill="none" stroke="#25211F" stroke-width="2.5"/></g>`);
-  parts.push(`<rect x="${hx - 74}" y="${hy - 82}" width="148" height="82" rx="8" fill="#F2695C" stroke="#25211F" stroke-width="3.5"/>`);
-  parts.push(`<path d="M${hx - 26} ${hy}v-38a26 26 0 0 1 52 0v38z" fill="#FEFBF4" stroke="#25211F" stroke-width="3"/>`);
-  parts.push(`<circle cx="${hx + 12}" cy="${hy - 18}" r="3" fill="#25211F"/>`);
-  // 门里的黑猫（迎客）
-  parts.push(`<g><ellipse cx="${hx - 4}" cy="${hy - 16}" rx="13" ry="12" fill="#25211F"/><path d="M${hx - 15} ${hy - 24}l-3-10 9 5zM${hx + 7} ${hy - 24}l3-10-9 5z" fill="#25211F"/><circle cx="${hx - 8}" cy="${hy - 17}" r="1.8" fill="#FEFBF4"/><circle cx="${hx + 1}" cy="${hy - 17}" r="1.8" fill="#FEFBF4"/></g>`);
-
-  // 居民：真实物品图标沿地面排开（屋左右各一排，最多 9 位）
-  const shown = state.items.slice(0, 9);
-  const slots = [
-    [88, 236], [170, 244], [218, 228],
-    [468, 232], [540, 246], [600, 230],
-    [140, 200], [452, 196], [592, 178],
+  // 五大房间区域
+  const zones = [
+    { room: '卧室', x: 30, y: 76, w: 180, h: 140, fill: '#E3D7F5' },
+    { room: '客厅', x: 240, y: 100, w: 200, h: 150, fill: '#F5EBD8' },
+    { room: '厨房', x: 470, y: 70, w: 180, h: 150, fill: '#FAD2DC' },
+    { room: '储物间', x: 60, y: 268, w: 190, h: 140, fill: '#C7E8D4' },
+    { room: '卫生间', x: 440, y: 256, w: 200, h: 130, fill: '#C9E4F5' },
   ];
-  shown.forEach((it, i) => {
-    const [x, y] = slots[i];
-    const scale = 0.86 + (i % 3) * 0.07;
-    const code = expiryInfo(it).code;
-    parts.push(`<use href="#ic-${/^([a-z][a-z0-9-]*)$/.test(it.icon || catIcon(it.category)) ? (it.icon || catIcon(it.category)) : 'box'}" x="${x - 24 * scale}" y="${y - 48 * scale}" width="${48 * scale}" height="${48 * scale}"/>`);
-    if (code === 'soon') parts.push(`<g><circle cx="${x + 20}" cy="${y - 58}" r="9" fill="#F7E7A6" stroke="#25211F" stroke-width="2.5"/><text x="${x + 20}" y="${y - 53}" font-size="13" font-weight="900" text-anchor="middle" fill="#25211F">!</text></g>`);
-    else if (code === 'expired') parts.push(`<g><circle cx="${x + 20}" cy="${y - 60}" r="10" fill="#F6AFA3" stroke="#25211F" stroke-width="2.5"/><text x="${x + 20}" y="${y - 55}" font-size="13" font-weight="900" text-anchor="middle" fill="#25211F">!!</text></g>`);
-    else if (isLowStock(it)) parts.push(`<path d="M${x + 14} ${y - 52}q4-8 8 0q4 8-4 8t-4-8z" fill="#BFD9EE" stroke="#25211F" stroke-width="2"/>`);
-  });
-  if (state.items.length > shown.length) {
-    parts.push(`<g><circle cx="66" cy="170" r="20" fill="#F7E7A6" stroke="#25211F" stroke-width="2.5"/><text x="66" y="176" font-size="14" font-weight="900" text-anchor="middle" fill="#25211F">+${state.items.length - shown.length}</text></g>`);
+  const inRoom = (room) => state.items.filter((it) => (it.location || '').includes(room));
+  for (const z of zones) {
+    const list = inRoom(z.room);
+    parts.push('<g class="map-zone" data-room="' + z.room + '" style="cursor:pointer"><rect x="' + z.x + '" y="' + z.y + '" width="' + z.w + '" height="' + z.h + '" rx="26" fill="' + z.fill + '" stroke="#25211F" stroke-width="3" stroke-dasharray="60 8 40 10"/><rect x="' + (z.x + 12) + '" y="' + (z.y - 14) + '" width="' + Math.min(z.w - 24, 34 + z.room.length * 17) + '" height="30" rx="15" fill="#fff" stroke="#25211F" stroke-width="2.5"/><text x="' + (z.x + 24) + '" y="' + (z.y + 7) + '" font-size="16" fill="#25211F" style="font-family:var(--font-cute)">' + z.room + '</text>' + (list.length ? '' : '<text x="' + (z.x + z.w / 2) + '" y="' + (z.y + z.h / 2) + '" font-size="13" fill="#96897b" text-anchor="middle" style="font-family:var(--font-cute)">还空着～</text>') + '</g>');
+    const per = Math.min(4, list.length);
+    const cell = Math.min(46, (z.w - 40) / Math.max(1, per));
+    list.slice(0, 4).forEach((it, i) => {
+      const iconId = /^([a-z][a-z0-9-]*)$/.test(it.icon || catIcon(it.category)) ? (it.icon || catIcon(it.category)) : 'box';
+      const info = expiryInfo(it);
+      const ix = z.x + 22 + i * (cell + 8);
+      const iy = z.y + 38;
+      let mark = '';
+      if (info.code === 'soon') mark = '<circle cx="' + (ix + cell - 2) + '" cy="' + (iy - 2) + '" r="8" fill="#F5EBD8" stroke="#25211F" stroke-width="2"/><text x="' + (ix + cell - 2) + '" y="' + (iy + 2.5) + '" font-size="11" font-weight="900" text-anchor="middle" fill="#25211F">!</text>';
+      else if (info.code === 'expired') mark = '<circle cx="' + (ix + cell - 2) + '" cy="' + (iy - 2) + '" r="8" fill="#FAD2DC" stroke="#25211F" stroke-width="2"/><text x="' + (ix + cell - 2) + '" y="' + (iy + 2.5) + '" font-size="11" font-weight="900" text-anchor="middle" fill="#25211F">!!</text>';
+      parts.push('<g class="map-zone" data-room="' + z.room + '" style="cursor:pointer"><use href="#ic-' + iconId + '" x="' + ix + '" y="' + iy + '" width="' + cell + '" height="' + cell + '"/>' + mark + '</g>');
+    });
+    if (list.length > 4) parts.push('<g class="map-zone" data-room="' + z.room + '" style="cursor:pointer"><text x="' + (z.x + z.w - 16) + '" y="' + (z.y + z.h - 14) + '" font-size="15" font-weight="900" text-anchor="end" fill="#25211F" style="font-family:var(--font-cute)">+' + (list.length - 4) + '</text></g>');
   }
-
+  // 其他角落（位置不在五大房间）
+  const other = state.items.filter((it) => !ROOMS.some((r) => (it.location || '').includes(r)));
+  if (other.length) {
+    const zx = 290, zy = 272, zw = 120, zh = 122;
+    parts.push('<g class="map-zone" data-room="__other" style="cursor:pointer"><rect x="' + zx + '" y="' + zy + '" width="' + zw + '" height="' + zh + '" rx="26" fill="#fff" stroke="#25211F" stroke-width="3" stroke-dasharray="26 8 18 9"/><rect x="' + (zx + 12) + '" y="' + (zy - 14) + '" width="86" height="30" rx="15" fill="#fff" stroke="#25211F" stroke-width="2.5"/><text x="' + (zx + 24) + '" y="' + (zy + 7) + '" font-size="16" fill="#25211F" style="font-family:var(--font-cute)">其他</text><text x="' + (zx + zw / 2) + '" y="' + (zy + zh / 2 + 6) + '" font-size="16" font-weight="900" text-anchor="middle" fill="#25211F" style="font-family:var(--font-cute)">×' + other.length + '</text></g>');
+  }
   svg.innerHTML = parts.join('');
 }
 
@@ -285,36 +380,41 @@ function renderDiaryHead() {
 
 /* ---------------- 贴纸式统计 ---------------- */
 
-function renderStickerStats() {
-  const el = $('#sticker-row');
-  if (!el) return;
-  let soon = 0, expired = 0, low = 0;
-  for (const it of state.items) {
-    const code = expiryInfo(it).code;
-    if (code === 'soon') soon++;
-    else if (code === 'expired') expired++;
-    if (isLowStock(it)) low++;
-  }
-  const stickers = [
-    { n: state.items.length, label: '居民', cls: 'butter', rot: -4, status: null, title: '小区居民总数' },
-    { n: soon, label: '想被用掉', cls: 'peach', rot: 3, status: 'soon', title: '点击查看临期居民' },
-    { n: expired, label: '过期啦', cls: 'coral', rot: -2, status: 'expired', title: '点击查看过期居民' },
-    { n: low, label: '要补货', cls: 'sky', rot: 4, status: 'low', title: '点击查看库存不足' },
-  ];
-  el.innerHTML = stickers.map((s) => `
-    <button type="button" class="sticker ${s.cls}${s.status ? ' clickable' : ''}"
-      ${s.status ? `data-status="${s.status}"` : ''} title="${s.title}" style="--rot:${s.rot}deg">
-      <span class="sticker-num">${s.n}</span>
-      <span class="sticker-label">${s.label}</span>
-    </button>`).join('');
-}
-
 function renderStats() {
-  renderScene();
   renderDiaryHead();
-  renderStickerStats();
+  renderDataCards();
+  renderMap();
+  renderBellBadge();
   $('#overview-empty').classList.toggle('hidden', state.items.length > 0);
   $('#overview-content').classList.toggle('hidden', state.items.length === 0);
+}
+
+function renderDataCards() {
+  const el = $('#data-cards');
+  if (!el) return;
+  const now = new Date();
+  const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const monthNew = state.items.filter((it) => (it.createdAt || '').slice(0, 7) === ym).length;
+  let soon = 0, check = 0;
+  for (const it of state.items) {
+    const code = expiryInfo(it).code;
+    if (it.remind && (code === 'soon' || code === 'expired')) soon++;
+    if (it.remind && needCheck(it)) check++;
+  }
+  const cards = [
+    { n: state.items.length, label: '已收录居民', cls: 'butter', rot: -3 },
+    { n: monthNew, label: '本月新入住', cls: 'mint', rot: 2 },
+    { n: soon + check, label: '需要关心', cls: 'peach', rot: -2 },
+  ];
+  el.innerHTML = cards.map((c) => '<div class="data-card ' + c.cls + '" style="transform:rotate(' + c.rot + 'deg)"><span class="data-num">' + c.n + '</span><span class="data-label">' + c.label + '</span></div>').join('');
+}
+
+function renderBellBadge() {
+  const b = $('#bell-badge');
+  if (!b) return;
+  const n = buildReminders().length;
+  b.textContent = n > 99 ? '99+' : (n || '');
+  b.classList.toggle('hidden', !n);
 }
 
 function renderAlerts() {
@@ -381,19 +481,17 @@ function renderDatalists() {
     .map((v) => `<option value="${escapeHtml(v)}"></option>`).join('');
 }
 
-function renderFilterOptions() {
-  const fill = (sel, values, label) => {
-    const prev = sel.value;
-    sel.innerHTML = `<option value="all">${label}</option>` +
-      values.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
-    const keep = values.includes(prev) ? prev : 'all';
-    sel.value = keep;
-    return keep;
-  };
-  state.filters.category = fill($('#filter-category'),
-    Array.from(new Set([...state.categories.map((c) => c.name), ...distinctValues((it) => it.category)]))
-      .sort((a, b) => a.localeCompare(b, 'zh')), '全部分类');
-  state.filters.location = fill($('#filter-location'), distinctValues((it) => it.location), '全部位置');
+function renderTagChips() {
+  const el = $('#tag-chips');
+  if (!el) return;
+  const f = state.filters;
+  const rf = state.roomFilter || '';
+  const st = [['all', '全部'], ['often', '常用'], ['idle', '闲置'], ['soon', '临期'], ['expired', '过期']];
+  let html = st.map(([v, l]) =>
+    `<button type="button" class="tag-chip${f.status === v && !rf ? ' selected' : ''}" data-status="${v}">${l}</button>`).join('');
+  html += ROOMS.map((r) =>
+    `<button type="button" class="tag-chip${rf === r ? ' selected' : ''}" data-room="${escapeHtml(r)}">${r}</button>`).join('');
+  el.innerHTML = html;
 }
 
 function filteredItems() {
@@ -406,11 +504,14 @@ function filteredItems() {
     }
     if (f.category !== 'all' && it.category !== f.category) return false;
     if (f.location !== 'all' && it.location !== f.location) return false;
-    if (f.status !== 'all') {
-      if (f.status === 'low') {
-        if (!isLowStock(it)) return false;
-      } else if (expiryInfo(it).code !== f.status) return false;
+    if (f.status === 'often' || f.status === 'idle') {
+      if ((it.usage || 'often') !== f.status) return false;
+    } else if (f.status === 'low') {
+      if (!isLowStock(it)) return false;
+    } else if (f.status !== 'all') {
+      if (expiryInfo(it).code !== f.status) return false;
     }
+    if (state.roomFilter && !(it.location || '').includes(state.roomFilter)) return false;
     return true;
   });
   const byName = (a, b) => a.name.localeCompare(b.name, 'zh');
@@ -432,13 +533,19 @@ function filteredItems() {
 function renderBook() {
   const grid = $('#book-grid');
   if (!grid) return;
+  renderTagChips();
+  grid.classList.toggle('list-view', viewMode === 'list');
   const owned = filteredItems();
   const ownedHtml = owned.map((it) => {
     const info = expiryInfo(it);
+    const usage = it.usage === 'idle'
+      ? '<span class="badge idle-b">闲置</span>'
+      : '<span class="badge often-b">常用</span>';
     return `<button type="button" class="book-card owned" data-id="${it.id}" title="点击看小档案">
       ${iconHtml(it.icon || catIcon(it.category), 'book-ic')}
       <span class="book-name">${escapeHtml(it.name)}</span>
       <span class="badge ${info.code}">${info.label}</span>
+      ${usage}
       <span class="book-qty">×${fmtNum(it.quantity)} ${escapeHtml(it.unit)}</span>
     </button>`;
   }).join('');
@@ -513,6 +620,57 @@ function renderCalendar() {
       <span class="cal-d">${d}</span><span class="cal-marks">${marks}</span></button>`;
   }
   grid.innerHTML = html;
+  renderCalSummary();
+  renderTheater();
+}
+
+function renderCalSummary() {
+  const el = $('#cal-summary');
+  if (!el) return;
+  const inMonth = (ds) => ds && +ds.slice(0, 4) === calY && +ds.slice(5, 7) === calM + 1;
+  let added = 0, consumed = 0;
+  for (const it of state.items) {
+    if (inMonth((it.createdAt || '').slice(0, 10))) added++;
+    for (const l of (it.log || [])) if (l.t === '消耗' && inMonth(l.d)) consumed += Math.abs(l.q) || 1;
+  }
+  const soon = state.items.filter((it) => expiryInfo(it).code === 'soon').length;
+  el.innerHTML = `
+    <div class="sum-item mint"><b>${added}</b><span>本月新入住</span></div>
+    <div class="sum-item butter"><b>${consumed}</b><span>本月消耗</span></div>
+    <div class="sum-item peach"><b>${soon}</b><span>临期居民</span></div>`;
+}
+
+function renderTheater() {
+  const el = $('#theater');
+  if (!el) return;
+  const start = Date.now() - 7 * 86400000;
+  const joins = [], used = [];
+  for (const it of state.items) {
+    const c = (it.createdAt || '').slice(0, 10);
+    if (c && Date.parse(c) >= start) joins.push(it);
+    for (const l of (it.log || [])) {
+      if (l.t === '消耗' && l.d && Date.parse(l.d) >= start) used.push(Math.abs(l.q) || 1);
+    }
+  }
+  const rooms = {};
+  for (const it of joins) {
+    const r = ROOMS.find((rm) => (it.location || '').includes(rm)) || '小区';
+    rooms[r] = (rooms[r] || 0) + 1;
+  }
+  const lines = [];
+  for (const [r, n] of Object.entries(rooms)) lines.push(`本周「${r}」新入住了 ${n} 位居民`);
+  if (used.length) lines.push(`一共消耗掉了 ${used.reduce((a, b) => a + b, 0)} 件物品，大家都很勤快`);
+  const exp = state.items.filter((it) => expiryInfo(it).code === 'expired').length;
+  if (exp) lines.push(`有 ${exp} 位居民在闹脾气（过期啦），快去看看它们`);
+  if (!lines.length) lines.push('这一周风平浪静，居民们睡得可香啦');
+  el.innerHTML = `
+    <div class="theater-strip">
+      <svg class="ic" style="width:36px;height:36px"><use href="#ic-house"/></svg>
+      <svg class="ic" style="width:30px;height:30px"><use href="#ic-catface"/></svg>
+      <svg class="ic" style="width:32px;height:32px"><use href="#ic-paw"/></svg>
+      <svg class="ic" style="width:26px;height:26px"><use href="#ic-calendar"/></svg>
+    </div>
+    <div class="theater-lines">${lines.map((l) => `<p>✿ ${escapeHtml(l)}</p>`).join('')}</div>`;
 }
 
 function showCalDay(d) {
@@ -541,38 +699,110 @@ function hideCalDay() {
 
 /* ---------------- 居民小档案（详情卡片） ---------------- */
 
+let detailStepperOpen = false;
+
 function openDetail(id) {
   const it = state.items.find((i) => i.id === id);
   if (!it) return;
   state.detailId = id;
+  detailStepperOpen = false;
   const info = expiryInfo(it);
   const iconId = /^([a-z][a-z0-9-]*)$/.test(it.icon || catIcon(it.category)) ? (it.icon || catIcon(it.category)) : 'box';
-  $('#detail-icon-use').setAttribute('href', `#ic-${iconId}`);
-  $('#d-name').textContent = it.name;
-  $('#d-badges').innerHTML =
+  $('#pd-icon').setAttribute('href', '#ic-' + iconId);
+  $('#pd-name').textContent = it.name;
+  $('#pd-badges').innerHTML =
     `<span class="badge ${info.code}">${info.label}</span>` +
     (isLowStock(it) ? '<span class="badge low">库存不足</span>' : '') +
+    (it.usage === 'idle' ? '<span class="badge idle-b">闲置中</span>' : '') +
     (it.category ? `<span class="chip">${iconHtml(catIcon(it.category))} ${escapeHtml(it.category)}</span>` : '');
-  $('#d-say').textContent = `“${personify(it)}”`;
-  const row = (k, v) => (v ? `<div class="d-row"><span>${k}</span><b>${v}</b></div>` : '');
-  $('#d-rows').innerHTML =
-    row('数量', `${fmtNum(it.quantity)} ${escapeHtml(it.unit)}`) +
-    row('存放位置', escapeHtml(it.location)) +
-    row('购入时间', it.purchaseDate) +
-    row('保质期至', it.expiryDate) +
-    row('最低库存提醒', it.minStock > 0 ? `少于 ${fmtNum(it.minStock)} 时提醒` : '') +
-    row('备注', escapeHtml(it.note));
-  $('#d-stepper').innerHTML = `
-    <button type="button" class="qty-btn" data-d="-1" title="减少 1">−</button>
-    <span class="qty-val">${fmtNum(it.quantity)} <small>${escapeHtml(it.unit)}</small></span>
-    <button type="button" class="qty-btn" data-d="1" title="增加 1">＋</button>`;
-  $('#detail-overlay').classList.remove('hidden');
+  $('#pd-say').textContent = `“${personify(it)}”`;
+  $('#pd-cards').innerHTML = `
+    <div class="panel info-card"><h2>基础信息</h2>
+      ${dRow('分类', it.category ? `${iconHtml(catIcon(it.category))} ${escapeHtml(it.category)}` : '')}
+      ${dRow('存放位置', escapeHtml(it.location))}
+      ${dRow('总数量', `${fmtNum(it.quantity)} ${escapeHtml(it.unit)}`)}
+      ${dRow('使用状态', it.usage === 'idle' ? '闲置中' : '常用')}
+    </div>
+    <div class="panel info-card"><h2>时间信息</h2>
+      ${dRow('购入日期', it.purchaseDate)}
+      ${dRow('保质期至', it.expiryDate)}
+      ${dRow('过期提醒', it.remind ? '已开启 🔔' : '已关闭')}
+    </div>
+    <div class="panel info-card"><h2>价值信息</h2>
+      ${dRow('单价', it.price ? `${fmtNum(it.price)} 元` : '')}
+      ${dRow('总计花费', it.price ? `约 ${fmtNum(it.price * it.quantity)} 元` : '')}
+    </div>
+    <div class="panel info-card"><h2>备注</h2><div class="d-note">${escapeHtml(it.note || '（没有备注，安静地待着）')}</div></div>
+    <div class="panel info-card"><h2>使用记录时间线</h2>${timelineHtml(it)}</div>`;
+  $('#pd-stepper').classList.add('hidden');
+  $('#page-detail').classList.remove('hidden');
+  $('#page-detail').scrollTop = 0;
 }
 
-function closeDetail() {
-  $('#detail-overlay').classList.add('hidden');
+function timelineHtml(it) {
+  const logs = (it.log || []).slice(0, 12);
+  if (!logs.length) return '<div class="chart-empty">还没有记录，点上面的「盘点增减」记一笔吧</div>';
+  return '<div class="timeline">' + logs.map((l) => {
+    const q = l.q > 0 ? '+' + fmtNum(l.q) : l.q === 0 ? '点名' : fmtNum(l.q);
+    return `<div class="tl-row"><span class="tl-dot"></span><span class="tl-date">${escapeHtml(l.d)}</span><span class="chip">${escapeHtml(l.t)}</span><b class="tl-q ${l.q > 0 ? 'up' : l.q < 0 ? 'down' : ''}">${q}</b></div>`;
+  }).join('') + '</div>';
+}
+
+function stocktakeQty(id, delta) {
+  const it = state.items.find((i) => i.id === id);
+  if (!it) return;
+  it.quantity = Math.max(0, (parseFloat(it.quantity) || 0) + delta);
+  it.updatedAt = new Date().toISOString();
+  it.log = it.log || [];
+  it.log.unshift({ d: todayStr(), t: '盘点', q: delta });
+  it.log = it.log.slice(0, 60);
+  saveItems();
+}
+
+function generateCard(it) {
+  const iconId = /^([a-z][a-z0-9-]*)$/.test(it.icon || catIcon(it.category)) ? (it.icon || catIcon(it.category)) : 'box';
+  const sym = document.querySelector('#ic-' + iconId);
+  if (!sym) return;
+  const attrs = [...sym.attributes].map((a) => a.name + '="' + a.value + '"').join(' ');
+  const svgStr = '<svg xmlns="http://www.w3.org/2000/svg" ' + attrs + '>' + sym.innerHTML + '</svg>';
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    c.width = 600; c.height = 820;
+    const x = c.getContext('2d');
+    x.fillStyle = '#FBF8F1'; x.fillRect(0, 0, 600, 820);
+    x.strokeStyle = '#25211F'; x.lineWidth = 5;
+    x.beginPath();
+    const r = 36, w = 552, h = 772, px = 24, py = 24;
+    x.moveTo(px + r, py); x.arcTo(px + w, py, px + w, py + h, r); x.arcTo(px + w, py + h, px, py + h, r); x.arcTo(px, py + h, px, py, r); x.arcTo(px, py, px + w, py, r);
+    x.closePath(); x.stroke();
+    x.drawImage(img, 190, 80, 220, 220);
+    x.fillStyle = '#25211F'; x.textAlign = 'center';
+    x.font = '44px "ZCOOL KuaiLe", "Noto Sans SC", sans-serif';
+    x.fillText(it.name.slice(0, 12), 300, 386);
+    const rows = [['分类', it.category], ['位置', it.location], ['数量', fmtNum(it.quantity) + ' ' + it.unit], ['购入', it.purchaseDate || '—'], ['保质期', it.expiryDate || '长期']];
+    rows.forEach(([k, v], i) => {
+      const y = 458 + i * 54;
+      x.textAlign = 'left'; x.fillStyle = '#7d746a'; x.font = '26px "Noto Sans SC", sans-serif'; x.fillText(k, 90, y);
+      x.textAlign = 'right'; x.fillStyle = '#453E38'; x.font = '28px "Noto Sans SC", sans-serif'; x.fillText(String(v || '—'), 510, y);
+      x.strokeStyle = '#e3ded2'; x.lineWidth = 2; x.setLineDash([6, 9]);
+      x.beginPath(); x.moveTo(90, y + 18); x.lineTo(510, y + 18); x.stroke(); x.setLineDash([]);
+    });
+    x.textAlign = 'center'; x.fillStyle = '#F4756B'; x.font = '27px "ZCOOL KuaiLe", sans-serif';
+    x.fillText('“' + personify(it) + '”', 300, 758);
+    const a = document.createElement('a');
+    a.download = '居民卡片-' + it.name + '.png';
+    a.href = c.toDataURL('image/png');
+    a.click();
+    toast('专属卡片已生成，长按或右键保存吧');
+  };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr);
+}
+
+function closeDetail(quiet) {
+  $('#page-detail').classList.add('hidden');
   state.detailId = null;
-  renderAll();
+  if (!quiet) renderAll();
 }
 
 /* ---------------- 增删改 ---------------- */
@@ -598,32 +828,63 @@ function deleteItem(id) {
 
 /* ---------------- 弹窗表单 ---------------- */
 
-function openModal(item) {
+function openForm(item) {
   const form = $('#item-form');
   state.editingId = item ? item.id : null;
   state.formCategory = item ? item.category : '';
   state.formIcon = item ? (item.icon || catIcon(item.category)) : '';
-  $('#modal-title').textContent = item ? '编辑物品' : '添加物品';
+  state.formRemind = item ? item.remind !== false : true;
+  state.formUsage = item ? (item.usage || 'often') : 'often';
+  $('#form-title').textContent = item ? '编辑居民' : '添加新物品';
   form.reset();
   if (item) {
     form.elements['name'].value = item.name;
     form.elements['location'].value = item.location;
     form.elements['quantity'].value = fmtNum(item.quantity);
     form.elements['unit'].value = item.unit;
+    form.elements['price'].value = item.price ? fmtNum(item.price) : '';
     form.elements['purchaseDate'].value = item.purchaseDate || '';
     form.elements['expiryDate'].value = item.expiryDate || '';
     form.elements['minStock'].value = fmtNum(item.minStock);
     form.elements['note'].value = item.note;
   }
   renderCatSelect();
+  renderLocChips();
+  renderUsageChips();
+  setRemindToggle(state.formRemind);
   renderPresets();
-  $('#modal-overlay').classList.remove('hidden');
-  setTimeout(() => form.elements['name'].focus(), 60);
+  $('#page-form').classList.remove('hidden');
+  $('#page-form').scrollTop = 0;
+  setTimeout(() => form.elements['name'].focus(), 150);
 }
 
-function closeModal() {
-  $('#modal-overlay').classList.add('hidden');
+function closeForm() {
+  $('#page-form').classList.add('hidden');
   state.editingId = null;
+  renderAll();
+}
+
+function renderLocChips() {
+  const el = $('#loc-select');
+  if (!el) return;
+  const cur = $('#item-form').elements['location'].value.trim();
+  el.innerHTML = ROOMS.map((r) =>
+    `<button type="button" class="cat-chip${cur.includes(r) ? ' selected' : ''}" data-room="${escapeHtml(r)}">${r}</button>`).join('');
+}
+
+function renderUsageChips() {
+  const el = $('#usage-select');
+  if (!el) return;
+  el.innerHTML = [['often', '⭐ 常用'], ['idle', '🌙 闲置']].map(([v, l]) =>
+    `<button type="button" class="cat-chip${state.formUsage === v ? ' selected' : ''}" data-usage="${v}">${l}</button>`).join('');
+}
+
+function setRemindToggle(on) {
+  const t = $('#f-remind');
+  if (!t) return;
+  t.classList.toggle('on', on);
+  t.setAttribute('aria-checked', on ? 'true' : 'false');
+  t.textContent = on ? '开着 🔔' : '关着';
 }
 
 function submitForm(e) {
@@ -636,24 +897,32 @@ function submitForm(e) {
     location: String(fd.get('location') || '').trim(),
     quantity: Math.max(0, parseFloat(fd.get('quantity')) || 0),
     unit: String(fd.get('unit') || '').trim() || '个',
+    price: Math.max(0, parseFloat(fd.get('price')) || 0),
     purchaseDate: dateOrNull(fd.get('purchaseDate')),
     expiryDate: dateOrNull(fd.get('expiryDate')),
+    remind: state.formRemind,
+    usage: state.formUsage,
     minStock: Math.max(0, parseFloat(fd.get('minStock')) || 0),
     note: String(fd.get('note') || '').trim(),
   };
-  if (!data.name) { toast('请填写物品名称'); return; }
+  if (!data.name) { toast('先给居民起个名字吧'); return; }
   const now = new Date().toISOString();
+  const today = todayStr();
   if (state.editingId) {
     const it = state.items.find((i) => i.id === state.editingId);
-    if (it) Object.assign(it, data, { updatedAt: now });
-    toast('已保存修改');
+    if (it) {
+      const oldQty = parseFloat(it.quantity) || 0;
+      Object.assign(it, data, { updatedAt: now });
+      it.log = it.log || [];
+      if (data.quantity !== oldQty) it.log.unshift({ d: today, t: '盘点', q: +(data.quantity - oldQty).toFixed(2) });
+      toast('帮它记好啦');
+    }
   } else {
-    state.items.push({ id: uid(), ...data, createdAt: now, updatedAt: now });
+    state.items.push({ id: uid(), ...data, createdAt: now, updatedAt: now, log: [{ d: today, t: '入库', q: data.quantity }] });
     toast(`「${data.name}」搬进了小区`);
   }
   saveItems();
-  closeModal();
-  renderAll();
+  closeForm();
 }
 
 /* ---------------- 类目管理 ---------------- */
@@ -962,7 +1231,8 @@ function loadSample() {
     name, category, location, quantity, unit,
     purchaseDate: offsetDate(-(Math.ceil(Math.random() * 5) + 1)),
     expiryDate: expiryOffset == null ? null : offsetDate(expiryOffset),
-    minStock: 0, note: '',
+    minStock: 0, note: '', price: 0, remind: true, usage: 'often',
+    log: [{ d: todayStr(), t: '入库', q: quantity }],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...extra,
@@ -1008,67 +1278,55 @@ function switchTab(name) {
 function bindEvents() {
   // 底部导航
   $$('.nav-item').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
-  $('#nav-add').addEventListener('click', () => openModal(null));
+  $('#nav-add').addEventListener('click', () => openForm(null));
 
-  // 概览：贴纸统计点击 → 跳到居民列表并按状态筛选
-  $('#sticker-row').addEventListener('click', (e) => {
-    const st = e.target.closest('.sticker[data-status]');
-    if (!st) return;
-    state.filters.status = st.dataset.status;
-    $('#filter-status').value = state.filters.status;
-    switchTab('book');
-    renderBook();
-  });
-
-  // 概览：提醒区点击 → 去图鉴里找该居民
-  $('#alerts-list').addEventListener('click', (e) => {
-    const row = e.target.closest('[data-action="locate"]');
-    if (!row) return;
-    state.filters.q = row.dataset.name || '';
-    $('#search').value = state.filters.q;
-    switchTab('book');
-    renderBook();
-  });
-
-  // 临期提醒天数设置
-  $('#warn-days').addEventListener('change', (e) => {
-    const v = Math.min(365, Math.max(1, parseInt(e.target.value, 10) || 7));
-    e.target.value = v;
-    state.settings.warnDays = v;
-    saveSettings();
+  // 家园
+  $('#btn-quick-add').addEventListener('click', () => openForm(null));
+  $('#btn-stocktake').addEventListener('click', () => {
+    if (!state.items.length) { toast('小区还没有居民呢'); return; }
+    const d = todayStr();
+    for (const it of state.items) {
+      it.log = it.log || [];
+      it.log.unshift({ d, t: '盘点', q: 0 });
+      it.log = it.log.slice(0, 60);
+    }
+    saveItems();
     renderAll();
+    toast(`今日盘点完成，${state.items.length} 位居民都被点名啦`);
   });
+  $('#home-map').addEventListener('click', (e) => {
+    const z = e.target.closest('.map-zone[data-room]');
+    if (!z) return;
+    state.roomFilter = z.dataset.room === '__other' ? '' : z.dataset.room;
+    switchTab('book');
+    renderBook();
+  });
+  $('#btn-bell').addEventListener('click', openRemindPage);
+  $('#to-reminds').addEventListener('click', openRemindPage);
 
-  // 列表：数量增减 / 编辑 / 删除（事件委托）——已由图鉴与详情页接管，保留兼容
-  // 图鉴：点已拥有的卡片 → 打开居民小档案
+  // 图鉴
+  $('#search').addEventListener('input', (e) => { state.filters.q = e.target.value; renderBook(); });
+  $('#sort').addEventListener('change', (e) => { state.filters.sort = e.target.value; renderBook(); });
+  $('#tag-chips').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-status],[data-room]');
+    if (!b) return;
+    if (b.dataset.status) state.filters.status = b.dataset.status;
+    if (b.dataset.room) state.roomFilter = state.roomFilter === b.dataset.room ? '' : b.dataset.room;
+    renderTagChips();
+    renderBook();
+  });
+  $('#view-toggle').addEventListener('click', () => {
+    viewMode = viewMode === 'grid' ? 'list' : 'grid';
+    renderBook();
+  });
   $('#book-grid').addEventListener('click', (e) => {
-    const c = e.target.closest('.book-card.owned');
-    if (c) openDetail(c.dataset.id);
+    const owned = e.target.closest('.book-card.owned');
+    if (owned) openDetail(owned.dataset.id);
+    const sil = e.target.closest('.book-card.silhouette');
+    if (sil) openForm(null);
   });
 
-  // 详情页：关闭 / 编辑 / 送走 / 数量步进
-  $('#detail-close').addEventListener('click', closeDetail);
-  $('#detail-overlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeDetail(); });
-  $('#d-edit').addEventListener('click', () => {
-    const it = state.items.find((i) => i.id === state.detailId);
-    if (!it) return;
-    closeDetail();
-    openModal(it);
-  });
-  $('#d-del').addEventListener('click', () => {
-    const id = state.detailId;
-    if (!id) return;
-    closeDetail();
-    deleteItem(id);
-  });
-  $('#d-stepper').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-d]');
-    if (!b || !state.detailId) return;
-    adjustQty(state.detailId, +b.dataset.d);
-    openDetail(state.detailId); // 刷新详情数字
-  });
-
-  // 日历：翻月 + 点日期看当天记录
+  // 日历
   $('#cal-prev').addEventListener('click', () => { calM--; if (calM < 0) { calM = 11; calY--; } hideCalDay(); renderCalendar(); });
   $('#cal-next').addEventListener('click', () => { calM++; if (calM > 11) { calM = 0; calY++; } hideCalDay(); renderCalendar(); });
   $('#cal-grid').addEventListener('click', (e) => {
@@ -1076,45 +1334,140 @@ function bindEvents() {
     if (!cell) return;
     showCalDay(+cell.dataset.day);
   });
-
-  // 搜索 / 筛选 / 排序
-  $('#search').addEventListener('input', (e) => { state.filters.q = e.target.value; renderBook(); });
-  $('#filter-status').addEventListener('change', (e) => { state.filters.status = e.target.value; renderBook(); });
-  $('#filter-category').addEventListener('change', (e) => { state.filters.category = e.target.value; renderBook(); });
-  $('#filter-location').addEventListener('change', (e) => { state.filters.location = e.target.value; renderBook(); });
-  $('#sort').addEventListener('change', (e) => { state.filters.sort = e.target.value; renderBook(); });
-
-  // 添加 / 编辑弹窗
-  $('#fab').addEventListener('click', () => openModal(null));
-  $('#btn-add-first').addEventListener('click', () => openModal(null));
-  $('#btn-sample').addEventListener('click', loadSample);
-  $('#modal-close').addEventListener('click', closeModal);
-  $('#btn-cancel').addEventListener('click', closeModal);
-  $('#modal-overlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeModal(); });
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    if (!$('#modal-overlay').classList.contains('hidden')) closeModal();
-    if (!$('#detail-overlay').classList.contains('hidden')) closeDetail();
-    if (!$('#cat-overlay').classList.contains('hidden')) closeCatManager();
-  });
   $('#cal-day-list').addEventListener('click', (e) => {
     const row = e.target.closest('.cal-day-row[data-id]');
     if (row) { hideCalDay(); openDetail(row.dataset.id); }
   });
+
+  // 详情页
+  $('#detail-back').addEventListener('click', () => closeDetail());
+  $('#pd-stock').addEventListener('click', () => {
+    const st = $('#pd-stepper');
+    if (st.classList.contains('hidden')) {
+      const it = state.items.find((i) => i.id === state.detailId);
+      if (!it) return;
+      st.innerHTML = `
+        <button type="button" class="qty-btn" data-d="-1" title="消耗 1">−</button>
+        <span class="qty-val">${fmtNum(it.quantity)} <small>${escapeHtml(it.unit)}</small></span>
+        <button type="button" class="qty-btn" data-d="1" title="入库 1">＋</button>`;
+      st.classList.remove('hidden');
+    } else {
+      st.classList.add('hidden');
+    }
+  });
+  $('#pd-stepper').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-d]');
+    if (!b || !state.detailId) return;
+    stocktakeQty(state.detailId, +b.dataset.d);
+    openDetail(state.detailId);
+    $('#pd-stepper').classList.remove('hidden');
+  });
+  $('#pd-edit').addEventListener('click', () => {
+    const it = state.items.find((i) => i.id === state.detailId);
+    if (!it) return;
+    closeDetail(true);
+    openForm(it);
+  });
+  $('#pd-card-btn').addEventListener('click', () => {
+    const it = state.items.find((i) => i.id === state.detailId);
+    if (it) generateCard(it);
+  });
+  $('#pd-share-card').addEventListener('click', () => {
+    const it = state.items.find((i) => i.id === state.detailId);
+    if (it) generateCard(it);
+  });
+
+  // 表单
+  $('#form-back').addEventListener('click', () => closeForm());
   $('#item-form').addEventListener('submit', submitForm);
+  $('#f-minus').addEventListener('click', () => { const q = $('#f-qty'); q.value = Math.max(0, (parseFloat(q.value) || 0) - 1); });
+  $('#f-plus').addEventListener('click', () => { const q = $('#f-qty'); q.value = (parseFloat(q.value) || 0) + 1; });
+  $('#cat-select').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-name]');
+    if (!b) return;
+    state.formCategory = b.dataset.name;
+    state.formIcon = catIcon(state.formCategory);
+    renderCatSelect();
+    renderPresets();
+  });
+  $('#preset-chip-list').addEventListener('click', (e) => {
+    const b = e.target.closest('.preset-chip');
+    if (!b) return;
+    state.formIcon = b.dataset.icon;
+    $('#item-form').elements['name'].value = b.dataset.name;
+    renderPresets();
+  });
+  $('#loc-select').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-room]');
+    if (!b) return;
+    $('#item-form').elements['location'].value = b.dataset.room;
+    renderLocChips();
+  });
+  $('#usage-select').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-usage]');
+    if (!b) return;
+    state.formUsage = b.dataset.usage;
+    renderUsageChips();
+  });
+  $('#f-remind').addEventListener('click', () => {
+    state.formRemind = !state.formRemind;
+    setRemindToggle(state.formRemind);
+  });
+
+  // 提醒中心
+  $('#btn-bell').addEventListener('click', openRemindPage);
+  $('#to-reminds').addEventListener('click', openRemindPage);
+  $('#remind-back').addEventListener('click', closeRemindPage);
+  $('#remind-chips').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-remind]');
+    if (!b) return;
+    state.remindFilter = b.dataset.remind;
+    renderReminders();
+  });
+  $('#remind-list').addEventListener('click', (e) => {
+    const c = e.target.closest('.remind-card[data-id]');
+    if (c) { closeRemindPage(); openDetail(c.dataset.id); }
+  });
+
+  // 我的
+  $('#menu-cats').addEventListener('click', openCatManager);
+  $('#menu-backup').addEventListener('click', () => $('#backup-row').classList.toggle('hidden'));
+  $('#menu-export-json').addEventListener('click', exportJson);
+  $('#menu-share').addEventListener('click', shareBackup);
+  $('#menu-export-csv').addEventListener('click', exportCsv);
+  $('#menu-import').addEventListener('click', () => $('#file-import').click());
+  $('#file-import').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (file) await importJson(file);
+  });
+  $('#menu-remind').addEventListener('click', () => $('#remind-row').classList.toggle('hidden'));
+  $('#warn-days-mine').addEventListener('change', (e) => {
+    const v = Math.min(365, Math.max(1, parseInt(e.target.value, 10) || 7));
+    e.target.value = v;
+    state.settings.warnDays = v;
+    saveSettings();
+    renderAll();
+  });
+  $('#menu-help').addEventListener('click', () => $('#help-overlay').classList.remove('hidden'));
+  $('#help-close').addEventListener('click', () => $('#help-overlay').classList.add('hidden'));
+  $('#help-done').addEventListener('click', () => $('#help-overlay').classList.add('hidden'));
+  $('#menu-about').addEventListener('click', () => $('#about-overlay').classList.remove('hidden'));
+  $('#about-close').addEventListener('click', () => $('#about-overlay').classList.add('hidden'));
+  $('#about-done').addEventListener('click', () => $('#about-overlay').classList.add('hidden'));
 
   // 类目管理
   $('#btn-cats').addEventListener('click', openCatManager);
-  $('#cat-close').addEventListener('click', closeCatManager);
-  $('#cat-done').addEventListener('click', closeCatManager);
-  $('#cat-overlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeCatManager(); });
+  $('#cat-close').addEventListener('click', () => { closeCatManager(); renderAll(); });
+  $('#cat-done').addEventListener('click', () => { closeCatManager(); renderAll(); });
+  $('#cat-overlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) { closeCatManager(); renderAll(); } });
   $('#cat-emoji-picker').addEventListener('click', (e) => {
     const b = e.target.closest('[data-icon]');
     if (!b) return;
     catIconPick = b.dataset.icon;
     renderCatPicker();
   });
-  $('#cat-add-btn').addEventListener('click', saveCategory);
+  $('#cat-add-btn').addEventListener('click', () => { saveCategory(); renderAll(); });
   $('#cat-del-btn').addEventListener('click', deleteCategory);
   $('#cat-cancel-edit').addEventListener('click', () => { resetCatForm(); renderCatList(); });
   $('#cat-list').addEventListener('click', (e) => {
@@ -1122,37 +1475,17 @@ function bindEvents() {
     if (b) startEditCategory(b.dataset.name);
   });
 
-  // 表单里的类目选择区
-  $('#cat-select').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-name]');
-    if (b) {
-      state.formCategory = b.dataset.name;
-      state.formIcon = catIcon(state.formCategory);
-      renderCatSelect();
-      renderPresets();
-      return;
-    }
-    if (e.target.closest('#cat-add-mini')) openCatManager();
-  });
-
-  // 类目下的常用物品预设：点一下自动填名称和图标
-  $('#preset-chip-list').addEventListener('click', (e) => {
-    const b = e.target.closest('.preset-chip');
-    if (!b) return;
-    $('#item-form').elements['name'].value = b.dataset.name;
-    state.formIcon = b.dataset.icon;
-    renderPresets();
-  });
-
-  // 导出 / 分享 / 导入
-  $('#btn-export-json').addEventListener('click', exportJson);
-  $('#btn-share').addEventListener('click', shareBackup);
-  $('#btn-export-csv').addEventListener('click', exportCsv);
-  $('#btn-import').addEventListener('click', () => $('#file-import').click());
-  $('#file-import').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    e.target.value = '';
-    if (file) await importJson(file);
+  // Esc 关闭所有浮层
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    ['#page-form', '#page-detail', '#page-remind', '#cat-overlay', '#help-overlay', '#about-overlay'].forEach((sel) => {
+      const el = $(sel);
+      if (el && !el.classList.contains('hidden')) {
+        el.classList.add('hidden');
+        if (sel === '#page-form') { state.editingId = null; renderAll(); }
+        if (sel === '#page-detail') state.detailId = null;
+      }
+    });
   });
 }
 
@@ -1166,7 +1499,6 @@ function init() {
   setupInstallHint();
   renderCatPicker();
   renderCatSelect();
-  $('#warn-days').value = state.settings.warnDays;
   bindEvents();
   renderAll();
 }
