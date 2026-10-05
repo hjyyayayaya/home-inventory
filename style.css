@@ -566,6 +566,18 @@ h1, h2, h3 { margin: 0; font-family: var(--font-cute); font-weight: 400; letter-
 
 /* ---------- 响应式 ---------- */
 
+/* ---------- v20 附加：标签分组标题 / 确认弹窗 / 层级修正 ---------- */
+.tag-group {
+  font-family: var(--font-cute); font-size: 13px; color: var(--ink-3);
+  align-self: center; padding-left: 6px; white-space: nowrap;
+}
+.span-full { grid-column: 1 / -1; }
+.confirm-modal { width: min(400px, 92vw); text-align: center; }
+.confirm-msg { font-size: 15px; color: var(--ink-2); padding: 6px 4px 14px; }
+#cat-overlay { z-index: 70; }
+#confirm-overlay { z-index: 80; }
+.toast { z-index: 90; }
+
 /* ============================================================
  * v20：补货清单 / 三级效期 / 分析账单 / 自定义标签
  * ============================================================ */
