@@ -5,7 +5,7 @@
  * 更新程序文件后，把 CACHE 版本号 +1 即可强制刷新缓存。
  * ============================================================ */
 
-const CACHE = 'home-inventory-v22';
+const CACHE = 'home-inventory-v30';
 
 // 应用外壳：离线时至少要能打开页面所需的一切
 const SHELL = [
@@ -46,7 +46,7 @@ self.addEventListener('fetch', (event) => {
     // 页面导航：优先网络保持最新，离线时回退到缓存的 index.html
     if (req.mode === 'navigate') {
       event.respondWith(
-        fetch(req)
+        fetch(req, { cache: 'no-cache' })
           .then((res) => {
             const copy = res.clone();
             caches.open(CACHE).then((c) => c.put('./index.html', copy));
@@ -56,9 +56,9 @@ self.addEventListener('fetch', (event) => {
       );
       return;
     }
-    // 静态资源：网络优先（保证更新即时生效），断网时回退缓存
+    // 静态资源：重新验证（有网必最新），断网时回退缓存
     event.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-cache' })
         .then((res) => {
           if (res && res.ok) {
             const copy = res.clone();
