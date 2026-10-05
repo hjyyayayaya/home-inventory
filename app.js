@@ -32,6 +32,34 @@ const ICON_CHOICES = [
 // 五大家庭空间（家园地图的区域）
 const ROOMS = ['客厅', '卧室', '厨房', '卫生间', '储物间'];
 
+// 常用单位预设 + 不同单位对应的阈值滑条量程
+const UNIT_PRESETS = ['个', '瓶', '罐', '卷', '袋', '盒', '包', '支', 'ml', 'L', 'kg', 'g'];
+const UNIT_SLIDER_MAX = { ml: 1000, L: 100, kg: 50, g: 500 };
+
+function unitSliderMax(unit) {
+  return UNIT_SLIDER_MAX[unit.trim()] || 20;
+}
+
+function renderUnitChips() {
+  const el = $('#unit-select');
+  if (!el) return;
+  const cur = $('#f-unit').value.trim();
+  el.innerHTML = UNIT_PRESETS.map((u) =>
+    `<button type="button" class="cat-chip${cur === u ? ' selected' : ''}" data-unit="${escapeHtml(u)}">${u}</button>`).join('');
+}
+
+function updateSliderMax() {
+  const sl = $('#f-minstock');
+  if (!sl) return;
+  const max = unitSliderMax($('#f-unit').value.trim());
+  sl.max = max;
+  if (parseFloat(sl.value) > max) sl.value = max;
+  $('#f-minstock-val').textContent = sl.value;
+  const ticks = $('#f-minstock-ticks');
+  if (ticks) ticks.innerHTML = [0, 0.25, 0.5, 0.75, 1].map((p) =>
+    `<span>${Math.round(max * p)}</span>`).join('');
+}
+
 let viewMode = 'grid'; // 图鉴视图：grid / list
 let formTags = []; // 表单里正在编辑的标签
 let reportRange = 'month'; // 分析账单：month / year
@@ -164,8 +192,9 @@ function buildReminders() {
     const icon = /^([a-z][a-z0-9-]*)$/.test(it.icon || catIcon(it.category)) ? (it.icon || catIcon(it.category)) : 'box';
     if (it.remind && it.expiryDate) {
       const d = daysUntil(it.expiryDate);
-      if (d < 0) list.push({ it, icon, type: 'expired', title: `${it.name} 已过期 ${-d} 天`, sub: `保质期至 ${it.expiryDate}`, date: it.expiryDate, id: it.id });
-      else if (d <= state.settings.warnDays) list.push({ it, icon, type: 'expire', title: `${it.name} 还有 ${d} 天过期`, sub: `保质期至 ${it.expiryDate}`, date: it.expiryDate, id: it.id });
+      if (d < 0) list.push({ it, icon, type: 'expired', title: `【过期】${it.name} 已过期 ${-d} 天`, sub: `保质期至 ${it.expiryDate}`, date: it.expiryDate, id: it.id });
+      else if (d <= 7) list.push({ it, icon, type: 'expire', title: `【紧急】${it.name} 还有 ${d} 天过期`, sub: `保质期至 ${it.expiryDate}`, date: it.expiryDate, id: it.id });
+      else if (d <= state.settings.warnDays) list.push({ it, icon, type: 'expire', title: `【临期】${it.name} 还有 ${d} 天过期`, sub: `保质期至 ${it.expiryDate}`, date: it.expiryDate, id: it.id });
     }
     if (isLowStock(it)) list.push({ it, icon, type: 'restock', title: `${it.name} 库存不足`, sub: `只剩 ${fmtNum(it.quantity)} ${it.unit}，最低要备 ${fmtNum(it.minStock)}`, date: (it.updatedAt || '').slice(0, 10), id: it.id });
     if (it.remind && needCheck(it)) {
@@ -553,11 +582,22 @@ function renderMap() {
     });
     if (list.length > 4) parts.push('<g class="map-zone" data-room="' + z.room + '" style="cursor:pointer"><text x="' + (z.x + z.w - 16) + '" y="' + (z.y + z.h - 14) + '" font-size="15" font-weight="900" text-anchor="end" fill="#25211F" style="font-family:var(--font-cute)">+' + (list.length - 4) + '</text></g>');
   }
-  // 其他角落（位置不在五大房间）
-  const other = state.items.filter((it) => !ROOMS.some((r) => (it.location || '').includes(r)));
-  if (other.length) {
-    const zx = 290, zy = 272, zw = 120, zh = 122;
-    parts.push('<g class="map-zone" data-room="__other" style="cursor:pointer"><rect x="' + zx + '" y="' + zy + '" width="' + zw + '" height="' + zh + '" rx="26" fill="#fff" stroke="#25211F" stroke-width="3" stroke-dasharray="26 8 18 9"/><rect x="' + (zx + 12) + '" y="' + (zy - 14) + '" width="86" height="30" rx="15" fill="#fff" stroke="#25211F" stroke-width="2.5"/><text x="' + (zx + 24) + '" y="' + (zy + 7) + '" font-size="16" fill="#25211F" style="font-family:var(--font-cute)">其他</text><text x="' + (zx + zw / 2) + '" y="' + (zy + zh / 2 + 6) + '" font-size="16" font-weight="900" text-anchor="middle" fill="#25211F" style="font-family:var(--font-cute)">×' + other.length + '</text></g>');
+  // 自定义位置（不在五大房间）→ 同步显示在地图中间空地
+  const customs = distinctValues((it) => it.location)
+    .filter((l) => !ROOMS.some((r) => l.includes(r)));
+  const unlocated = state.items.filter((it) => !(it.location || '').trim());
+  const zx = 268, zy = 262, zw = 160, zh = 130;
+  const firstLoc = customs[0];
+  const firstList = firstLoc ? inRoom(firstLoc) : [];
+  const restN = customs.slice(1).reduce((n, l) => n + inRoom(l).length, 0) + unlocated.length;
+  const zoneLabel = firstLoc || (unlocated.length ? '未分配' : '');
+  if (zoneLabel) {
+    const zoneItems = firstLoc ? firstList : unlocated;
+    parts.push('<g class="map-zone" data-room="' + (firstLoc ? escapeHtml(firstLoc) : '') + '" style="cursor:pointer"><rect x="' + zx + '" y="' + zy + '" width="' + zw + '" height="' + zh + '" rx="26" fill="#fff" stroke="#25211F" stroke-width="3" stroke-dasharray="26 8 18 9"/><rect x="' + (zx + 12) + '" y="' + (zy - 14) + '" width="' + Math.min(zw - 24, 34 + zoneLabel.length * 17) + '" height="30" rx="15" fill="#fff" stroke="#25211F" stroke-width="2.5"/><text x="' + (zx + 24) + '" y="' + (zy + 7) + '" font-size="16" fill="#25211F" style="font-family:var(--font-cute)">' + escapeHtml(zoneLabel) + '</text>' + (restN ? '<text x="' + (zx + zw - 14) + '" y="' + (zy + zh - 12) + '" font-size="14" font-weight="900" text-anchor="end" fill="#25211F" style="font-family:var(--font-cute)">+' + restN + '</text>' : '') + '</g>');
+    zoneItems.slice(0, 3).forEach((it, i) => {
+      const iconId = /^([a-z][a-z0-9-]*)$/.test(it.icon || catIcon(it.category)) ? (it.icon || catIcon(it.category)) : 'box';
+      parts.push('<g class="map-zone" data-room="' + (firstLoc ? escapeHtml(firstLoc) : '') + '" style="cursor:pointer"><use href="#ic-' + iconId + '" x="' + (zx + 20 + i * 46) + '" y="' + (zy + 36) + '" width="40" height="40"/></g>');
+    });
   }
   svg.innerHTML = parts.join('');
 }
@@ -700,13 +740,14 @@ function renderTagChips() {
   if (!el) return;
   const f = state.filters;
   const rf = state.roomFilter || '';
+  const tf = state.tagFilter || '';
   const st = [['all', '全部'], ['often', '常用'], ['idle', '闲置'], ['soon', '临期'], ['expired', '过期']];
-  let html = st.map(([v, l]) =>
-    `<button type="button" class="tag-chip${f.status === v && !rf ? ' selected' : ''}" data-status="${v}">${l}</button>`).join('');
+  let html = `<span class="tag-group">状态</span>` + st.map(([v, l]) =>
+    `<button type="button" class="tag-chip${f.status === v && !rf && !tf ? ' selected' : ''}" data-status="${v}">${l}</button>`).join('');
+  html += `<span class="tag-group">类目</span>` + state.categories.map((c) =>
+    `<button type="button" class="tag-chip${f.category === c.name ? ' selected' : ''}" data-cat="${escapeHtml(c.name)}">${iconHtml(c.icon)}${escapeHtml(c.name)}</button>`).join('');
   html += ROOMS.map((r) =>
     `<button type="button" class="tag-chip${rf === r ? ' selected' : ''}" data-room="${escapeHtml(r)}">${r}</button>`).join('');
-  // 自定义标签分组
-  const tags = distinctValues((it) => '').length ? [] : [];
   const tagSet = new Set();
   for (const it of state.items) for (const t of (it.tags || [])) tagSet.add(t);
   for (const t of tagSet) html += `<button type="button" class="tag-chip tag-only${state.tagFilter === t ? ' selected' : ''}" data-tag="${escapeHtml(t)}">#${escapeHtml(t)}</button>`;
@@ -1042,14 +1083,28 @@ function adjustQty(id, delta) {
   renderAll();
 }
 
+let confirmCb = null;
+
+function showConfirm(msg, cb) {
+  $('#confirm-msg').textContent = msg;
+  confirmCb = cb || null;
+  $('#confirm-overlay').classList.remove('hidden');
+}
+
+function closeConfirm() {
+  $('#confirm-overlay').classList.add('hidden');
+  confirmCb = null;
+}
+
 function deleteItem(id) {
   const it = state.items.find((i) => i.id === id);
   if (!it) return;
-  if (!confirm(`确定删除「${it.name}」吗？`)) return;
-  state.items = state.items.filter((i) => i.id !== id);
-  saveItems();
-  renderAll();
-  toast('它搬走了，小区会想它的');
+  showConfirm(`确定送走「${it.name}」吗？它搬走后小区会想它的`, () => {
+    state.items = state.items.filter((i) => i.id !== id);
+    saveItems();
+    renderAll();
+    toast('它搬走了，小区会想它的');
+  });
 }
 
 /* ---------------- 弹窗表单 ---------------- */
@@ -1087,6 +1142,8 @@ function openForm(item) {
   $('#f-minstock-val').textContent = slider.value;
   renderCatSelect();
   renderLocChips();
+  renderUnitChips();
+  updateSliderMax();
   renderUsageChips();
   setRemindToggle(state.formRemind);
   renderPresets();
@@ -1272,20 +1329,21 @@ function deleteCategory() {
   const msg = used
     ? `有 ${used} 件物品属于「${name}」，删除后它们将变成未分类，确定删除吗？`
     : `确定删除类目「${name}」吗？`;
-  if (!confirm(msg)) return;
-  state.categories = state.categories.filter((c) => c.name !== name);
-  for (const it of state.items) if (it.category === name) it.category = '';
-  if (state.filters.category === name) state.filters.category = 'all';
-  if (state.formCategory === name) state.formCategory = '';
-  saveCategories();
-  saveItems();
-  toast('类目已删除');
-  resetCatForm();
-  renderCatList();
-  renderCatSelect();
-  renderFilterOptions();
-  renderList();
-  renderCharts();
+  showConfirm(msg, () => {
+    state.categories = state.categories.filter((c) => c.name !== name);
+    for (const it of state.items) if (it.category === name) it.category = '';
+    if (state.filters.category === name) state.filters.category = 'all';
+    if (state.formCategory === name) state.formCategory = '';
+    saveCategories();
+    saveItems();
+    toast('类目已删除');
+    resetCatForm();
+    renderCatList();
+    renderCatSelect();
+    renderTagChips();
+    renderBook();
+    renderCharts();
+  });
 }
 
 function renderCatSelect() {
@@ -1469,7 +1527,7 @@ async function importJson(file) {
     renderAll();
     toast(`导入完成：新增 ${added} 件，更新 ${updated} 件`);
   } catch (err) {
-    alert('导入失败：' + err.message);
+    toast('导入失败：' + err.message);
   }
 }
 
@@ -1561,6 +1619,7 @@ function bindEvents() {
     const b = e.target.closest('[data-status],[data-room],[data-tag]');
     if (!b) return;
     if (b.dataset.status) state.filters.status = b.dataset.status;
+    if (b.dataset.cat) state.filters.category = state.filters.category === b.dataset.cat ? 'all' : b.dataset.cat;
     if (b.dataset.room) state.roomFilter = state.roomFilter === b.dataset.room ? '' : b.dataset.room;
     if (b.dataset.tag) state.tagFilter = state.tagFilter === b.dataset.tag ? '' : b.dataset.tag;
     renderTagChips();
@@ -1618,6 +1677,12 @@ function bindEvents() {
     if (!it) return;
     closeDetail(true);
     openForm(it);
+  });
+  $('#pd-del').addEventListener('click', () => {
+    const id = state.detailId;
+    if (!id) return;
+    closeDetail(true);
+    deleteItem(id);
   });
   $('#pd-card-btn').addEventListener('click', () => {
     const it = state.items.find((i) => i.id === state.detailId);
@@ -1726,6 +1791,16 @@ function bindEvents() {
     if (b) startEditCategory(b.dataset.name);
   });
 
+  // 单位选择（联动阈值滑条量程）
+  $('#unit-select').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-unit]');
+    if (!b) return;
+    $('#f-unit').value = b.dataset.unit;
+    renderUnitChips();
+    updateSliderMax();
+  });
+  $('#f-unit').addEventListener('input', () => { renderUnitChips(); updateSliderMax(); });
+
   // 最低库存滑条
   $('#f-minstock').addEventListener('input', (e) => {
     $('#f-minstock-val').textContent = e.target.value;
@@ -1795,6 +1870,15 @@ function bindEvents() {
     reportRange = b.dataset.range;
     renderReport();
   });
+
+  // 确认弹窗
+  $('#confirm-ok').addEventListener('click', () => {
+    const cb = confirmCb;
+    closeConfirm();
+    if (cb) cb();
+  });
+  $('#confirm-cancel').addEventListener('click', closeConfirm);
+  $('#confirm-overlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeConfirm(); });
 
   // Esc 关闭所有浮层
   document.addEventListener('keydown', (e) => {
