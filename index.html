@@ -262,7 +262,7 @@
       <div id="pd-cards"></div>
       <div class="detail-ops">
         <button type="button" class="btn primary" id="pd-stock">盘点增减</button>
-        <button type="button" class="btn" id="pd-edit">编辑信息</button>
+        <button type="button" class="btn danger-btn" id="pd-del">送走</button>
         <button type="button" class="link-btn" id="pd-share-card">生成专属卡片</button>
       </div>
       <div id="pd-stepper" class="qty-stepper hidden"></div>
@@ -305,9 +305,10 @@
             <button type="button" class="qty-btn" id="f-plus">＋</button>
           </div>
         </div>
-        <label class="field"><span>单位</span>
-          <input name="unit" maxlength="10" value="个" placeholder="个 / 盒 / 瓶…">
-        </label>
+        <div class="field"><span>单位（点选或自填）</span>
+          <div class="cat-select" id="unit-select"></div>
+          <input name="unit" id="f-unit" maxlength="10" value="个" placeholder="个 / 盒 / 瓶…">
+        </div>
         <label class="field"><span>单价（用于统计花费）</span>
           <input name="price" type="number" min="0" step="any" value="" placeholder="选填，如 12.5">
         </label>
@@ -347,7 +348,7 @@
             <input id="f-minstock" name="minStock" type="range" min="0" max="20" step="1" value="0">
             <span class="slider-val"><b id="f-minstock-val">0</b> 件</span>
           </div>
-          <div class="slider-ticks"><span>0</span><span>5</span><span>10</span><span>15</span><span>20</span></div>
+          <div class="slider-ticks" id="f-minstock-ticks"></div>
         </div>
         <label class="field"><span>备注</span>
           <textarea name="note" rows="2" maxlength="200" placeholder="品牌、规格、放在第几层…"></textarea>
@@ -437,6 +438,17 @@
       <p>数据仅保存在你自己的设备浏览器里，不会上传到任何服务器。</p>
     </div>
     <div class="modal-foot"><button type="button" id="about-done" class="btn primary">喵～</button></div>
+  </div>
+</div>
+
+<div id="confirm-overlay" class="modal-overlay hidden">
+  <div class="modal confirm-modal" role="alertdialog" aria-modal="true">
+    <div class="modal-head"><h2>确认一下</h2></div>
+    <p class="confirm-msg" id="confirm-msg"></p>
+    <div class="modal-foot">
+      <button type="button" id="confirm-cancel" class="btn">取消</button>
+      <button type="button" id="confirm-ok" class="btn primary">确定</button>
+    </div>
   </div>
 </div>
 
