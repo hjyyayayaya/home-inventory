@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Noto+Sans+SC:wght@400;500;700&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=31">
 </head>
 <body>
 
@@ -389,7 +389,108 @@
     </div>
   </div>
 
+  <!-- ⑧ 猫咪小区（整合自小猫微信小程序） -->
+  <section id="tab-cats" class="tab-panel">
+    <div class="diary-head">
+      <h1 class="diary-title">猫咪小区</h1>
+      <p class="diary-sub">铲屎官的日常，都记在这里啦</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>🐱 猫咪档案</h2>
+        <button type="button" id="cat-add-toggle" class="link-btn">＋ 领养一只</button>
+      </div>
+      <div id="cat-add-row" class="sub-row hidden">
+        <input id="cat-profile-name" class="cat-name-input" maxlength="12" placeholder="名字，如：咪咪">
+        <input id="cat-new-breed" class="cat-name-input" maxlength="16" placeholder="品种（选填）">
+        <button type="button" id="cat-add-btn2" class="btn primary">入住</button>
+      </div>
+      <div id="cats-list" class="cats-list"></div>
+    </div>
+
+    <div class="seg-nav" id="care-seg">
+      <button type="button" class="seg-btn active" data-seg="records">📝 记录</button>
+      <button type="button" class="seg-btn" data-seg="todos">⏰ 待办</button>
+      <button type="button" class="seg-btn" data-seg="health">🏥 健康</button>
+    </div>
+
+    <div id="care-seg-records">
+      <button type="button" class="btn primary big care-open" id="btn-care-add">＋ 记一笔猫咪日常</button>
+      <div class="panel">
+        <div class="panel-head"><h2>最近的记录</h2><span class="count" id="care-count"></span></div>
+        <div id="care-list" class="care-list"></div>
+      </div>
+    </div>
+
+    <div id="care-seg-todos" class="hidden">
+      <div class="cat-todo-add">
+        <input id="cat-todo-title" class="cat-name-input" maxlength="30" placeholder="要记的待办，如：打疫苗">
+        <input id="cat-todo-date" type="date" class="cat-date-input">
+        <button type="button" id="cat-todo-add" class="btn primary">＋</button>
+      </div>
+      <div class="cat-todo-repeat">
+        <label class="inline-setting">重复：
+          <select id="cat-todo-repeat" class="cat-date-input">
+            <option value="none">不重复</option>
+            <option value="daily">每天</option>
+            <option value="weekly">每周</option>
+            <option value="monthly">每月</option>
+          </select>
+        </label>
+      </div>
+      <div id="cat-todos-list" class="panel"></div>
+    </div>
+
+    <div id="care-seg-health" class="hidden">
+      <div class="panel">
+        <div class="panel-head"><h2>健康档案</h2><span class="count" id="health-count"></span></div>
+        <div id="health-list" class="care-list"></div>
+      </div>
+    </div>
+  </section>
+
 </main>
+
+<!-- 猫咪记录表单（全屏页） -->
+<div id="page-care" class="page hidden">
+  <div class="page-head">
+    <button type="button" class="page-back" id="care-back">‹ 返回</button>
+    <h1 class="page-title">记一笔猫咪日常</h1>
+    <span class="page-head-space"></span>
+  </div>
+  <div class="page-body">
+    <div class="field"><span>分类（点选）</span>
+      <div id="care-cats" class="care-cats"></div>
+    </div>
+    <div class="field"><span>给谁记录（可多选）</span>
+      <div id="care-pets" class="cat-select"></div>
+    </div>
+    <div class="form-grid">
+      <label class="field"><span>日期</span>
+        <input name="careDate" id="f-care-date" type="date">
+      </label>
+      <label class="field"><span>时间</span>
+        <input name="careTime" id="f-care-time" type="time">
+      </label>
+    </div>
+    <div id="care-weight-row" class="field hidden"><span>体重（kg）</span>
+      <input id="f-care-weight" type="number" min="0" step="0.01" placeholder="如 4.2">
+    </div>
+    <div id="care-sync-box" class="field hidden">
+      <span>🔗 同步扣减收纳库存（可选）</span>
+      <div id="care-sync-list" class="care-sync-list"></div>
+      <p class="cat-tip">勾选后，保存时会自动从对应物品扣减数量并记入消耗日志</p>
+    </div>
+    <label class="field"><span>备注</span>
+      <textarea name="careNote" id="f-care-note" rows="2" maxlength="200" placeholder="今天的情况…"></textarea>
+    </label>
+    <label class="field"><span>花费（选填，元）</span>
+      <input name="careAmount" id="f-care-amount" type="number" min="0" step="any" value="" placeholder="0">
+    </label>
+    <button type="button" class="btn primary save-bar" id="care-save">保存记录</button>
+  </div>
+</div>
 
 <!-- 类目管理弹窗 -->
 <div id="cat-overlay" class="modal-overlay hidden">
@@ -470,12 +571,15 @@
   <button class="nav-item" data-tab="calendar">
     <svg class="ic" aria-hidden="true"><use href="#ic-calendar"/></svg><span>日历</span>
   </button>
+  <button class="nav-item" data-tab="cats">
+    <svg class="ic" aria-hidden="true"><use href="#ic-catface"/></svg><span>猫咪</span>
+  </button>
   <button class="nav-item" data-tab="mine">
     <svg class="ic" aria-hidden="true"><use href="#ic-catface"/></svg><span>我的</span>
   </button>
 </nav>
 
-<script src="app.js"></script>
+<script src="app.js?v=31"></script>
 <script>
 // 注册 Service Worker：支持离线使用与「安装为桌面应用」。
 // 直接双击打开（file://）时自动跳过，不影响任何功能。
