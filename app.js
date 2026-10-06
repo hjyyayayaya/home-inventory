@@ -32,6 +32,54 @@ const ICON_CHOICES = [
 // 五大家庭空间（家园地图的区域）
 const ROOMS = ['客厅', '卧室', '厨房', '卫生间', '储物间'];
 
+// 猫咪日常记录分类（整合自小猫微信小程序）
+const CARE_GROUPS = [
+  { group: '日常', items: [
+    { key: 'shensi', name: '铲屎', icon: '🐾' },
+    { key: 'weight', name: '体重', icon: '⚖️' },
+    { key: 'water', name: '喝水', icon: '💧' },
+    { key: 'feed', name: '喂食', icon: '🍽️' }
+  ] },
+  { group: '零食玩具', items: [
+    { key: 'catfood', name: '猫粮', icon: '🍚' },
+    { key: 'can', name: '罐头', icon: '🥫' },
+    { key: 'freeze', name: '冻干', icon: '🐟' },
+    { key: 'snack', name: '零食', icon: '🍪' },
+    { key: 'homecook', name: '自制猫饭', icon: '🍳' },
+    { key: 'toy', name: '玩具', icon: '🧶' },
+    { key: 'like', name: '喜好', icon: '💖' }
+  ] },
+  { group: '美容清洁', items: [
+    { key: 'bath', name: '洗澡', icon: '🛁' },
+    { key: 'nail', name: '剪指甲', icon: '✂️' },
+    { key: 'ear', name: '洗耳朵', icon: '👂' },
+    { key: 'tooth', name: '刷牙', icon: '🦷' },
+    { key: 'fur', name: '梳毛', icon: '🪮' },
+    { key: 'litter', name: '换猫砂', icon: '🧹' },
+    { key: 'eye', name: '擦眼屎', icon: '👀' }
+  ] },
+  { group: '健康医疗', items: [
+    { key: 'deworm', name: '驱虫', icon: '💊' },
+    { key: 'vaccine', name: '疫苗', icon: '💉' },
+    { key: 'checkup', name: '体检', icon: '🩺' },
+    { key: 'supplement', name: '保健品', icon: '🧴' },
+    { key: 'buydrug', name: '买药', icon: '🧫' },
+    { key: 'doctor', name: '看病', icon: '🏥' },
+    { key: 'sterile', name: '绝育', icon: '⚕️' },
+    { key: 'usedrug', name: '用药', icon: '💧' }
+  ] },
+  { group: '出行', items: [
+    { key: 'carry', name: '托运', icon: '🧳' },
+    { key: 'foster', name: '寄养', icon: '🏠' }
+  ] }
+];
+const CARE_MEDICAL = ['deworm', 'vaccine', 'checkup', 'supplement', 'buydrug', 'doctor', 'sterile', 'usedrug'];
+// 记录类型 → 建议扣减的库存关键词
+const CARE_CONSUME_HINT = {
+  feed: '猫粮', catfood: '猫粮', can: '罐头', freeze: '冻干', snack: '零食',
+  litter: '猫砂', supplement: '保健品', usedrug: '药品', water: '水'
+};
+
 // 常用单位预设 + 不同单位对应的阈值滑条量程
 const UNIT_PRESETS = ['个', '瓶', '罐', '卷', '袋', '盒', '包', '支', 'ml', 'L', 'kg', 'g'];
 const UNIT_SLIDER_MAX = { ml: 1000, L: 100, kg: 50, g: 500 };
@@ -79,6 +127,10 @@ const state = {
   detailId: null, // 详情页当前展示的物品 id
   remindFilter: 'all', // 提醒中心筛选
   roomFilter: '', // 图鉴的房间筛选
+  cats: [], // 猫咪档案 [{id,name,breed,gender,birthday}]
+  careRecords: [], // 猫咪日常记录 [{id,type,name,icon,date,time,note,amount,pets,sync}]
+  catTodos: [], // 猫咪待办 [{id,title,date,repeat,done}]
+  careType: '', carePetSel: {}, careSyncSel: {},
 };
 
 /* ---------------- 工具函数 ---------------- */
@@ -348,6 +400,9 @@ function renderAll() {
   renderBook();
   renderCalendar();
   renderMine();
+  renderCats();
+  renderCareList();
+  renderCatTodos();
 }
 
 /* ---------------- 采购小票（统一采购清单） ---------------- */
@@ -485,6 +540,130 @@ function renderReport() {
     <div class="panel"><h2>😱 过期浪费</h2>
       ${expiredN ? `<p class="report-copy">有 ${expiredN} 位居民过期了，浪费约 <b>${fmtNum(waste)} 元</b></p>` : '<div class="chart-empty">没有过期浪费，很棒！</div>'}
     </div>`;
+}
+
+/* ---------------- 猫咪小区（整合自小猫微信小程序） ---------------- */
+
+const LS_CATS = 'homeInventory.cats.v1';
+const LS_CARE = 'homeInventory.care.v1';
+const LS_CATTODO = 'homeInventory.catTodos.v1';
+
+function loadCats() {
+  try { state.cats = JSON.parse(localStorage.getItem(LS_CATS)) || []; } catch { state.cats = []; }
+  try { state.careRecords = JSON.parse(localStorage.getItem(LS_CARE)) || []; } catch { state.careRecords = []; }
+  try { state.catTodos = JSON.parse(localStorage.getItem(LS_CATTODO)) || []; } catch { state.catTodos = []; }
+}
+
+function saveCats() { localStorage.setItem(LS_CATS, JSON.stringify(state.cats)); }
+function saveCare() { localStorage.setItem(LS_CARE, JSON.stringify(state.careRecords)); }
+function saveCatTodos() { localStorage.setItem(LS_CATTODO, JSON.stringify(state.catTodos)); }
+
+function findCareType(key) {
+  for (const g of CARE_GROUPS)
+    for (const t of g.items)
+      if (t.key === key) return { key: t.key, name: t.name, icon: t.icon, group: g.group };
+  return null;
+}
+
+function careTypeName(key) {
+  const c = findCareType(key);
+  return c ? c.name : key;
+}
+
+/** 库存扣减：记录消耗日志并减数量（数量不足时扣到 0） */
+function deductItemStock(itemId, q, note) {
+  const it = state.items.find((i) => i.id === itemId);
+  if (!it || q <= 0) return false;
+  const realQ = Math.min(q, it.quantity);
+  it.quantity = +(Math.max(0, (parseFloat(it.quantity) || 0) - q)).toFixed(2);
+  it.updatedAt = new Date().toISOString();
+  it.log = it.log || [];
+  it.log.unshift({ d: todayStr(), t: '消耗', q: -realQ });
+  it.log = it.log.slice(0, 60);
+  return true;
+}
+
+function renderCats() {
+  const list = $('#cats-list');
+  if (!list) return;
+  list.innerHTML = state.cats.length ? state.cats.map((c) => `
+    <div class="cat-profile">
+      <svg class="ic cat-avatar" aria-hidden="true"><use href="#ic-catface"/></svg>
+      <div class="cat-profile-info">
+        <b>${escapeHtml(c.name)}</b>
+        <small>${escapeHtml(c.breed || '猫咪')}${c.gender ? ' · ' + escapeHtml(c.gender) : ''}${c.birthday ? ' · ' + escapeHtml(c.birthday) : ''}</small>
+      </div>
+      <button type="button" class="tag-x" data-delcat="${c.id}" title="送走">✕</button>
+    </div>`).join('')
+    : '<div class="chart-empty">还没有猫咪住户，点右上角「领养一只」</div>';
+}
+
+function renderCareList() {
+  const list = $('#care-list');
+  if (!list) return;
+  const recs = state.careRecords.slice(0, 30);
+  $('#care-count').textContent = `共 ${state.careRecords.length} 条`;
+  list.innerHTML = recs.length ? recs.map((r) => `
+    <div class="care-row">
+      <span class="care-ico">${typeof r.icon === 'string' && r.icon.length <= 4 ? escapeHtml(r.icon) : iconHtml(r.icon)}</span>
+      <div class="care-main">
+        <b>${escapeHtml(r.name)}</b>
+        <small>${escapeHtml(r.date)} ${escapeHtml(r.time || '')}${r.petsNames ? ' · ' + escapeHtml(r.petsNames) : ''}${r.note ? ' · ' + escapeHtml(r.note) : ''}</small>
+        ${r.syncNames ? `<small class="care-synced">🔗 已扣库存：${escapeHtml(r.syncNames)}</small>` : ''}
+      </div>
+      <button type="button" class="tag-x" data-delcare="${r.id}" title="删除">✕</button>
+    </div>`).join('')
+    : '<div class="chart-empty">还没有记录，点上面的按钮记一笔</div>';
+  const h = $('#health-list');
+  if (h) {
+    const med = state.careRecords.filter((r) => CARE_MEDICAL.includes(r.type));
+    $('#health-count').textContent = `共 ${med.length} 条`;
+    h.innerHTML = med.length ? med.map((r) => `
+      <div class="care-row">
+        <span class="care-ico">${typeof r.icon === 'string' && r.icon.length <= 4 ? escapeHtml(r.icon) : iconHtml(r.icon)}</span>
+        <div class="care-main"><b>${escapeHtml(r.name)}</b><small>${escapeHtml(r.date)} ${escapeHtml(r.time || '')}${r.note ? ' · ' + escapeHtml(r.note) : ''}</small></div>
+      </div>`).join('') : '<div class="chart-empty">还没有健康医疗记录</div>';
+  }
+}
+
+function renderCatTodos() {
+  const el = $('#cat-todos-list');
+  if (!el) return;
+  const list = state.catTodos.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  el.innerHTML = list.length ? list.map((t) => `
+    <div class="care-row cat-todo-row ${t.done ? 'done' : ''}">
+      <label class="cat-todo-check"><input type="checkbox" data-todo="${t.id}" ${t.done ? 'checked' : ''}><span class="cat-todo-fake"></span></label>
+      <div class="care-main"><b class="${t.done ? 'done-text' : ''}">${escapeHtml(t.title)}</b><small>${escapeHtml(t.date)} · ${t.repeat === 'none' ? '不重复' : t.repeat === 'daily' ? '每天' : t.repeat === 'weekly' ? '每周' : '每月'}</small></div>
+      <button type="button" class="tag-x" data-deltodo="${t.id}" title="删除">✕</button>
+    </div>`).join('') : '<div class="chart-empty">没有待办，安排一个吧</div>';
+}
+
+function addCat(name, breed) {
+  state.cats.push({ id: uid(), name: name.trim().slice(0, 12), breed: (breed || '').trim().slice(0, 16), gender: '', birthday: '' });
+  saveCats();
+  renderCats();
+}
+
+function addCatTodo(title, date, repeat) {
+  state.catTodos.unshift({ id: uid(), title: title.trim().slice(0, 30), date: date || todayStr(), repeat: repeat || 'none', done: false });
+  saveCatTodos();
+  renderCatTodos();
+}
+
+function toggleCatTodo(id) {
+  const t = state.catTodos.find((x) => x.id === id);
+  if (!t) return;
+  t.done = !t.done;
+  if (t.done && t.repeat && t.repeat !== 'none') {
+    // 周期待办：完成后顺延一个周期（保留一条未完成）
+    const base = new Date(t.date >= todayStr() ? t.date : todayStr());
+    if (t.repeat === 'daily') base.setDate(base.getDate() + 1);
+    else if (t.repeat === 'weekly') base.setDate(base.getDate() + 7);
+    else base.setMonth(base.getMonth() + 1);
+    state.catTodos.unshift({ id: uid(), title: t.title, date: toYMD(base), repeat: t.repeat, done: false });
+  }
+  saveCatTodos();
+  renderCatTodos();
 }
 
 /* ---------------- 我的（个人中心） ---------------- */
@@ -1583,6 +1762,128 @@ function switchTab(name) {
 
 /* ---------------- 事件绑定与启动 ---------------- */
 
+/* ---------------- 猫咪记录表单（含库存联动） ---------------- */
+
+function openCareForm(presetType) {
+  const c = presetType ? findCareType(presetType) : null;
+  state.careType = c ? c.key : '';
+  state.carePetSel = {};
+  state.careSyncSel = {};
+  const form = $('#item-form');
+  $('#f-care-date').value = todayStr();
+  $('#f-care-time').value = new Date().toTimeString().slice(0, 5);
+  $('#f-care-note').value = '';
+  $('#f-care-amount').value = '';
+  $('#f-care-weight').value = '';
+  renderCareCats();
+  renderCarePets();
+  renderCareSync();
+  $('#care-weight-row').classList.toggle('hidden', state.careType !== 'weight');
+  $('#page-care').classList.remove('hidden');
+  $('#page-care').scrollTop = 0;
+}
+
+function closeCareForm() {
+  $('#page-care').classList.add('hidden');
+  renderAll();
+}
+
+function renderCareCats() {
+  const el = $('#care-cats');
+  if (!el) return;
+  el.innerHTML = CARE_GROUPS.map((g) => `
+    <div class="care-group">
+      <span class="care-group-name">${escapeHtml(g.group)}</span>
+      <div class="care-group-items">${g.items.map((t) =>
+        `<button type="button" class="care-cat${state.careType === t.key ? ' selected' : ''}" data-type="${t.key}" title="${t.name}">${t.icon}<small>${escapeHtml(t.name)}</small></button>`).join('')}</div>
+    </div>`).join('');
+}
+
+function renderCarePets() {
+  const el = $('#care-pets');
+  if (!el) return;
+  el.innerHTML = state.cats.length ? state.cats.map((c) =>
+    `<button type="button" class="cat-chip${state.carePetSel[c.id] ? ' selected' : ''}" data-pet="${c.id}">${escapeHtml(c.name)}</button>`).join('')
+    : '<div class="chart-empty">先去猫咪档案领养一只吧</div>';
+}
+
+/** 库存联动：消耗类记录 → 自动匹配物品（同名/同关键词/宠物类目） */
+function careSyncCandidates(typeKey) {
+  const kw = CARE_CONSUME_HINT[typeKey] || '';
+  const scored = [];
+  for (const it of state.items) {
+    let score = 0;
+    if (kw && it.name.includes(kw)) score += 4;
+    if (kw && (it.category || '').includes(kw)) score += 3;
+    if ((it.tags || []).some((t) => kw && (t.includes(kw) || kw.includes(t) && t.length > 1))) score += 2;
+    if ((it.category || '') === '宠物' || (it.category || '') === '小猫') score += 1;
+    if (score > 0) scored.push({ it, score });
+  }
+  return scored.sort((a, b) => b.score - a.score).map((x) => x.it);
+}
+
+function renderCareSync() {
+  const box = $('#care-sync-box');
+  const list = $('#care-sync-list');
+  if (!box || !list) return;
+  const cands = careSyncCandidates(state.careType);
+  if (!cands.length) {
+    box.classList.add('hidden');
+    list.innerHTML = '';
+    return;
+  }
+  box.classList.remove('hidden');
+  list.innerHTML = cands.slice(0, 6).map((it) => `
+    <label class="care-sync-row">
+      <input type="checkbox" data-sync="${it.id}" ${state.careSyncSel[it.id] ? 'checked' : ''}>
+      ${iconHtml(it.icon || catIcon(it.category))}
+      <span class="care-sync-name">${escapeHtml(it.name)}</span>
+      <small>现存 ${fmtNum(it.quantity)} ${escapeHtml(it.unit)}</small>
+      <span class="care-sync-q">−<input type="number" min="0" step="any" value="1" data-syncq="${it.id}"></span>
+    </label>`).join('');
+}
+
+function saveCareRecord() {
+  const c = findCareType(state.careType);
+  if (!c) { toast('请先选一个分类'); return; }
+  const petIds = Object.keys(state.carePetSel).filter((k) => state.carePetSel[k]);
+  if (!petIds.length) { toast('请选择要记录的猫咪'); return; }
+  const date = $('#f-care-date').value || todayStr();
+  const time = $('#f-care-time').value || new Date().toTimeString().slice(0, 5);
+  const note = $('#f-care-note').value.trim();
+  const amount = parseFloat($('#f-care-amount').value) || 0;
+  const weight = parseFloat($('#f-care-weight').value) || 0;
+  if (state.careType === 'weight' && !weight) { toast('请填写体重'); return; }
+
+  const petsNames = petIds.map((pid) => { const c = state.cats.find((x) => x.id === pid); return c ? c.name : ''; }).filter(Boolean).join('、');
+  const syncs = [];
+  for (const it of state.items) {
+    if (state.careSyncSel[it.id]) {
+      const input = document.querySelector('[data-syncq="' + it.id + '"]');
+      const q = Math.max(1, parseFloat(input ? input.value : 1) || 1);
+      syncs.push({ itemId: it.id, name: it.name, q });
+    }
+  }
+
+  const rec = {
+    id: uid(), type: state.careType, name: c.name, icon: c.icon,
+    date, time, note, amount, weight: state.careType === 'weight' ? weight : 0,
+    pets: petIds, petsNames,
+    sync: syncs.map((s) => ({ name: s.name, q: s.q })),
+  };
+  state.careRecords.unshift(rec);
+  saveCare();
+
+  // 同步扣减库存（写入消耗日志 → 预测/补货自动生效）
+  syncs.forEach((s) => { deductItemStock(s.itemId, s.q, c.name); });
+  saveItems();
+
+  closeCareForm();
+  renderCareList();
+  toast(syncs.length ? `已记录「${c.name}」，并同步扣减了 ${syncs.length} 件库存` : `已记录「${c.name}」`);
+}
+
+/* ---------------- 事件绑定 ---------------- */
 function bindEvents() {
   // 底部导航
   $$('.nav-item').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
@@ -1879,6 +2180,90 @@ function bindEvents() {
   });
   $('#confirm-cancel').addEventListener('click', closeConfirm);
   $('#confirm-overlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeConfirm(); });
+
+  // 猫咪小区
+  $('#cat-add-toggle').addEventListener('click', () => $('#cat-add-row').classList.toggle('hidden'));
+  $('#cat-add-btn2').addEventListener('click', () => {
+    const name = $('#cat-profile-name').value.trim();
+    if (!name) { toast('先给猫咪起个名字'); return; }
+    addCat(name, $('#cat-new-breed').value);
+    $('#cat-new-name').value = '';
+    $('#cat-new-breed').value = '';
+    $('#cat-add-row').classList.add('hidden');
+    toast(`${name} 入住了猫咪小区`);
+  });
+  $('#cats-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-delcat]');
+    if (!b) return;
+    showConfirm('确定送走这只猫咪吗？它的记录会保留', () => {
+      state.cats = state.cats.filter((c) => c.id !== b.dataset.delcat);
+      saveCats();
+      renderCats();
+      toast('猫咪搬去了新家');
+    });
+  });
+  $('#care-seg').addEventListener('click', (e) => {
+    const b = e.target.closest('.seg-btn');
+    if (!b) return;
+    $$('#care-seg .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
+    ['records', 'todos', 'health'].forEach((seg) =>
+      $('#care-seg-' + seg).classList.toggle('hidden', seg !== b.dataset.seg));
+    if (b.dataset.seg === 'records') renderCareList();
+    if (b.dataset.seg === 'todos') renderCatTodos();
+    if (b.dataset.seg === 'health') renderCareList();
+  });
+  $('#btn-care-add').addEventListener('click', () => openCareForm());
+  $('#care-back').addEventListener('click', closeCareForm);
+  $('#care-cats').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-type]');
+    if (!b) return;
+    state.careType = b.dataset.type;
+    state.careSyncSel = {};
+    renderCareCats();
+    $('#care-weight-row').classList.toggle('hidden', state.careType !== 'weight');
+    renderCareSync();
+  });
+  $('#care-pets').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pet]');
+    if (!b) return;
+    state.carePetSel[b.dataset.pet] = !state.carePetSel[b.dataset.pet];
+    renderCarePets();
+  });
+  $('#care-sync-list').addEventListener('click', (e) => {
+    const cb = e.target.closest('[data-sync]');
+    if (cb) state.careSyncSel[cb.dataset.sync] = cb.checked;
+  });
+  $('#care-save').addEventListener('click', saveCareRecord);
+  $('#care-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-delcare]');
+    if (!b) return;
+    state.careRecords = state.careRecords.filter((r) => r.id !== b.dataset.delcare);
+    saveCare();
+    renderCareList();
+  });
+  $('#health-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-delcare]');
+    if (!b) return;
+    state.careRecords = state.careRecords.filter((r) => r.id !== b.dataset.delcare);
+    saveCare();
+    renderCareList();
+  });
+  $('#cat-todo-add').addEventListener('click', () => {
+    const title = $('#cat-todo-title').value.trim();
+    if (!title) { toast('先写上待办内容'); return; }
+    addCatTodo(title, $('#cat-todo-date').value, $('#cat-todo-repeat').value);
+    $('#cat-todo-title').value = '';
+  });
+  $('#cat-todos-list').addEventListener('click', (e) => {
+    const c = e.target.closest('[data-todo]');
+    if (c) { toggleCatTodo(c.dataset.todo); return; }
+    const d = e.target.closest('[data-deltodo]');
+    if (d) {
+      state.catTodos = state.catTodos.filter((t) => t.id !== d.dataset.deltodo);
+      saveCatTodos();
+      renderCatTodos();
+    }
+  });
 
   // Esc 关闭所有浮层
   document.addEventListener('keydown', (e) => {
