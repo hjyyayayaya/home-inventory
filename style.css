@@ -564,6 +564,86 @@ h1, h2, h3 { margin: 0; font-family: var(--font-cute); font-weight: 400; letter-
 .app-footer { text-align: center; color: var(--ink-3); font-size: 12.5px; font-weight: 600; padding: 10px 20px 26px; }
 .app-footer a { color: var(--primary-active); text-decoration: underline dotted; }
 
+
+/* ---------- 猫咪小区（整合自小猫小程序） ---------- */
+.cats-list { display: flex; flex-direction: column; gap: 10px; }
+.cat-profile {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--rice); border: 2px solid var(--ink-1);
+  border-radius: 16px 20px 14px 22px / 20px 14px 22px 16px;
+  padding: 10px 14px;
+}
+.cat-avatar { width: 44px; height: 44px; background: var(--pink); border: 2px solid var(--ink-1); border-radius: 50%; padding: 6px; flex-shrink: 0; }
+.cat-profile-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cat-profile-info b { font-family: var(--font-cute); font-size: 16px; color: var(--ink-1); }
+.cat-profile-info small { font-size: 12.5px; color: var(--ink-3); font-weight: 600; }
+
+.seg-nav { display: flex; gap: 8px; justify-content: center; margin-bottom: 14px; }
+.seg-btn {
+  font-family: var(--font-cute); font-size: 14px;
+  border: 2px solid var(--ink-1); border-radius: 999px;
+  background: var(--bg-input); color: var(--ink-2);
+  padding: 6px 18px; cursor: pointer;
+  transition: all .15s var(--ease);
+}
+.seg-btn.active { background: var(--coral); color: #fff; }
+
+.care-list { display: flex; flex-direction: column; gap: 10px; }
+.care-row { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; border-bottom: 2px dashed var(--border-light); }
+.care-row:last-child { border-bottom: none; }
+.care-ico { font-size: 22px; line-height: 1.4; width: 30px; text-align: center; flex-shrink: 0; }
+.care-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.care-main b { font-family: var(--font-cute); font-size: 15px; color: var(--ink-1); }
+.care-main small { font-size: 12.5px; color: var(--ink-3); font-weight: 600; }
+.care-synced { color: var(--primary); }
+.care-row .tag-x { align-self: center; }
+
+.care-cats { display: flex; flex-direction: column; gap: 10px; }
+.care-group-name { font-size: 12.5px; color: var(--ink-3); font-weight: 700; display: block; margin-bottom: 4px; }
+.care-group-items { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.care-cat {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  width: 62px; padding: 8px 2px 6px;
+  border: 2px solid var(--ink-1); border-radius: 16px;
+  background: var(--bg-input); cursor: pointer; font: inherit;
+  transition: transform .15s var(--ease), background .15s var(--ease);
+}
+.care-cat .em, .care-cat svg { font-size: 22px; line-height: 1; }
+.care-cat small { font-size: 11.5px; font-weight: 600; color: var(--ink-2); }
+.care-cat:hover { transform: translateY(-2px) rotate(-1deg); }
+.care-cat.selected { background: var(--butter); box-shadow: 0 2px 0 0 var(--ink-1); }
+
+.care-sync-list { display: flex; flex-direction: column; gap: 8px; }
+.care-sync-row {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--rice); border-radius: 12px; padding: 8px 10px;
+  font-size: 14px;
+}
+.care-sync-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
+.care-sync-name { flex: 1; font-weight: 600; color: var(--ink-1); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.care-sync-row small { color: var(--ink-3); font-weight: 600; }
+.care-sync-q input { width: 56px; text-align: center; font: inherit; font-weight: 700; border: 1.5px solid var(--ink-1); border-radius: 8px; padding: 3px; background: var(--bg-input); }
+.care-sync-q { color: var(--coral-deep); font-weight: 800; }
+
+.cat-todo-add { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.cat-todo-add .cat-name-input { flex: 1 1 160px; }
+.cat-date-input { font: inherit; font-size: 14px; border: 2px solid var(--ink-1); border-radius: 12px; background: var(--bg-input); padding: 6px 8px; color: var(--ink-2); }
+.cat-todo-repeat { margin-bottom: 10px; }
+.cat-todo-row.done .done-text { text-decoration: line-through; color: var(--ink-4); }
+.cat-todo-check { display: inline-flex; cursor: pointer; }
+.cat-todo-check input { display: none; }
+.cat-todo-fake {
+  width: 24px; height: 24px; border-radius: 8px;
+  border: 2px solid var(--ink-1); background: var(--bg-input);
+  display: inline-block; position: relative;
+}
+.cat-todo-check input:checked + .cat-todo-fake { background: var(--mint); }
+.cat-todo-check input:checked + .cat-todo-fake::after {
+  content: '✓'; position: absolute; inset: 0; text-align: center; line-height: 20px;
+  color: var(--ink-1); font-weight: 900; font-size: 14px;
+}
+.report-entry { display: block; width: 100%; margin-top: 8px; }
+
 /* ---------- 响应式 ---------- */
 
 /* ---------- v20 附加：标签分组标题 / 确认弹窗 / 层级修正 ---------- */
